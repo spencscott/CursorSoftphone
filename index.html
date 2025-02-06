@@ -256,6 +256,46 @@
             border-color: #1a73e8;
             box-shadow: 0 0 0 2px rgba(26,115,232,0.2);
         }
+
+        #call-status {
+            background: #e8f5e9;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 12px 0;
+            text-align: center;
+        }
+
+        .status-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-text {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #34a853;
+        }
+
+        #call-timer {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 16px;
+            color: #1a73e8;
+            font-weight: 500;
+        }
+
+        /* Animation for incoming/outgoing calls */
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .calling {
+            animation: pulse 1s infinite;
+        }
     </style>
 </head>
 <body>
@@ -345,6 +385,15 @@
                     Hangup
                 </button>
             </div>
+            <div id="call-status" style="display: none;">
+                <div class="status-container">
+                    <div class="status-text">
+                        <i class="material-icons">call</i>
+                        <span id="call-state">Connected</span>
+                    </div>
+                    <div id="call-timer">00:00:00</div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -356,6 +405,8 @@
         let currentMicId = null;
         let currentSpeakerId = null;
         let stream = null;
+        let callTimer;
+        let callStartTime;
 
         function updateStatus(status, color = 'black') {
             console.log('Status:', status);
@@ -443,6 +494,7 @@
                     session = data.session;
 
                     if (session.direction === 'incoming') {
+                        updateCallStatus('Incoming Call...');
                         const constraints = {
                             audio: currentMicId ? { deviceId: { exact: currentMicId } } : true,
                             video: false
@@ -466,9 +518,16 @@
                         }
                     };
 
+                    session.on('accepted', () => {
+                        updateCallStatus('Connected');
+                    });
+
                     session.on('ended', () => {
-                        session = null;
-                        display.textContent = '';
+                        updateCallStatus('Ended');
+                    });
+
+                    session.on('failed', () => {
+                        updateCallStatus('Call Failed');
                     });
                 });
 
@@ -519,6 +578,7 @@
                 console.log('Calling:', destinationUri);
                 
                 userAgent.call(destinationUri, options);
+                updateCallStatus('Calling...');
             } catch (error) {
                 alert('Error making call: ' + error.message);
                 console.error('Call error:', error);
@@ -655,6 +715,59 @@
             console.log('Audio devices changed, reloading device list...');
             if (document.getElementById('settingsModal').style.display === 'flex') {
                 await loadAudioDevices();
+            }
+        });
+
+        function updateCallStatus(state, isConnected = false) {
+            const callStatus = document.getElementById('call-status');
+            const callState = document.getElementById('call-state');
+            const callTimerDisplay = document.getElementById('call-timer');
+            
+            callStatus.style.display = 'block';
+            callState.textContent = state;
+
+            // Update styles based on state
+            if (state === 'Connected') {
+                callStatus.style.backgroundColor = '#e8f5e9';
+                callState.parentElement.classList.remove('calling');
+                callState.parentElement.style.color = '#34a853';
+                
+                // Start timer if not already started
+                if (!callTimer) {
+                    callStartTime = Date.now();
+                    callTimer = setInterval(updateCallTimer, 1000);
+                }
+            } else if (state === 'Ended') {
+                clearInterval(callTimer);
+                callTimer = null;
+                setTimeout(() => {
+                    callStatus.style.display = 'none';
+                    callTimerDisplay.textContent = '00:00:00';
+                }, 2000);
+            } else {
+                // For states like 'Calling' or 'Incoming Call'
+                callStatus.style.backgroundColor = '#e3f2fd';
+                callState.parentElement.classList.add('calling');
+                callState.parentElement.style.color = '#1a73e8';
+            }
+        }
+
+        function updateCallTimer() {
+            const callTimerDisplay = document.getElementById('call-timer');
+            const elapsed = Math.floor((Date.now() - callStartTime) / 1000);
+            
+            const hours = Math.floor(elapsed / 3600);
+            const minutes = Math.floor((elapsed % 3600) / 60);
+            const seconds = elapsed % 60;
+            
+            callTimerDisplay.textContent = 
+                `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        // Clean up timer when page is unloaded
+        window.addEventListener('beforeunload', () => {
+            if (callTimer) {
+                clearInterval(callTimer);
             }
         });
     })();
