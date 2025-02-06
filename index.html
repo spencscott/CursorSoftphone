@@ -210,42 +210,51 @@
 
         .control-buttons {
             display: flex;
-            gap: 8px;
-            position: relative;
             justify-content: center;
-            width: 100%;
             padding: 8px 0;
+            width: 100%;
         }
 
-        .control-buttons button {
+        /* Base button styles */
+        .call-button,
+        .answer-button,
+        .hangup-button {
+            width: 160px;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
         }
 
-        .control-buttons button i {
-            font-size: 20px;
-        }
-
-        #softphone-ui {
-            margin-top: 24px;
-        }
-
+        /* Individual button colors */
         .call-button {
             background: #34a853;
+            color: white;
         }
 
-        .call-button:hover {
-            background: #2d8745;
+        .answer-button {
+            background: #34a853;
+            color: white;
         }
 
         .hangup-button {
             background: #ea4335;
+            color: white;
         }
 
-        .hangup-button:hover {
-            background: #d33828;
+        /* Hidden state */
+        .hidden {
+            display: none;
+        }
+
+        #softphone-ui {
+            margin-top: 24px;
         }
 
         #mic-status {
@@ -577,7 +586,7 @@
                 <span id="selected-mic-name"></span>
                 <span>ready</span>
             </div>
-            <div class="button-container">
+            <div class="control-buttons">
                 <button id="callBtn" class="call-button">
                     <i class="material-icons">call</i>
                     Call
@@ -667,59 +676,47 @@
 
                 userAgent.on('newRTCSession', (data) => {
                     session = data.session;
-                    const hangupBtn = document.getElementById('hangupBtn');
                     const callBtn = document.getElementById('callBtn');
                     const answerBtn = document.getElementById('answerBtn');
+                    const hangupBtn = document.getElementById('hangupBtn');
 
                     if (session.direction === 'incoming') {
-                        // Incoming call - show answer button and hangup button
-                        updateCallStatus('Incoming Call...');
-                        answerBtn.classList.remove('hidden');
-                        hangupBtn.classList.remove('hidden');
+                        // Incoming call - show only answer button
                         callBtn.classList.add('hidden');
+                        answerBtn.classList.remove('hidden');
+                        hangupBtn.classList.add('hidden');
+                        updateCallStatus('Incoming Call...');
                     } else {
                         // Outgoing call - show only hangup button
-                        hangupBtn.classList.remove('hidden');
                         callBtn.classList.add('hidden');
                         answerBtn.classList.add('hidden');
+                        hangupBtn.classList.remove('hidden');
                     }
 
-                    session.connection.ontrack = (event) => {
-                        console.log("Received remote track:", event.streams[0]);
-                        if (event.streams && event.streams[0]) {
-                            const remoteAudio = new Audio();
-                            remoteAudio.srcObject = event.streams[0];
-                            
-                            // Set the audio output device if supported
-                            if (typeof remoteAudio.setSinkId === 'function' && currentSpeakerId) {
-                                remoteAudio.setSinkId(currentSpeakerId)
-                                    .catch(error => console.error('Error setting audio output:', error));
-                            }
-                            
-                            remoteAudio.play();
-                        }
-                    };
-
                     session.on('accepted', () => {
-                        updateCallStatus('Connected');
-                        // Hide answer button if it was showing
+                        // Call connected - show only hangup button
+                        callBtn.classList.add('hidden');
                         answerBtn.classList.add('hidden');
+                        hangupBtn.classList.remove('hidden');
+                        updateCallStatus('Connected');
                     });
 
                     session.on('ended', () => {
                         updateCallStatus('Ended');
+                        // Call ended - show only call button
                         setTimeout(() => {
-                            hangupBtn.classList.add('hidden');
-                            answerBtn.classList.add('hidden');
                             callBtn.classList.remove('hidden');
+                            answerBtn.classList.add('hidden');
+                            hangupBtn.classList.add('hidden');
                         }, 1000);
                     });
 
                     session.on('failed', () => {
                         updateCallStatus('Call Failed');
-                        hangupBtn.classList.add('hidden');
-                        answerBtn.classList.add('hidden');
+                        // Call failed - show only call button
                         callBtn.classList.remove('hidden');
+                        answerBtn.classList.add('hidden');
+                        hangupBtn.classList.add('hidden');
                     });
                 });
 
@@ -768,11 +765,14 @@
                 // Extract domain from the SIP URI
                 const domain = userAgent.configuration.uri.host;
                 userAgent.call(`sip:${number}@${domain}`, options);
+                
+                // Show only hangup button
+                this.classList.add('hidden');
+                document.getElementById('hangupBtn').classList.remove('hidden');
+                document.getElementById('answerBtn').classList.add('hidden');
             } catch (error) {
                 console.error('Microphone access denied:', error);
                 alert('Please allow microphone access to make calls');
-                document.getElementById('mic-status').classList.add('error');
-                document.getElementById('selected-mic-name').textContent = 'Microphone access denied';
             }
         });
 
