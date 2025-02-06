@@ -225,20 +225,13 @@
             align-items: center;
             padding: 8px 0;
             min-height: 52px;
-            position: relative;
-        }
-
-        /* Wrapper for each button */
-        .control-button-wrapper {
-            position: absolute;
-            width: 160px;
         }
 
         /* Base button styles */
         .call-button,
         .answer-button,
         .hangup-button {
-            width: 100%;
+            width: 160px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -604,24 +597,18 @@
                 <span>ready</span>
             </div>
             <div class="button-container">
-                <div class="control-button-wrapper">
-                    <button id="callBtn" class="call-button">
-                        <i class="material-icons">call</i>
-                        Call
-                    </button>
-                </div>
-                <div class="control-button-wrapper">
-                    <button id="answerBtn" class="answer-button hidden">
-                        <i class="material-icons">call</i>
-                        Answer
-                    </button>
-                </div>
-                <div class="control-button-wrapper">
-                    <button id="hangupBtn" class="hangup-button hidden">
-                        <i class="material-icons">call_end</i>
-                        Hang Up
-                    </button>
-                </div>
+                <button id="callBtn" class="call-button">
+                    <i class="material-icons">call</i>
+                    Call
+                </button>
+                <button id="answerBtn" class="answer-button hidden">
+                    <i class="material-icons">call</i>
+                    Answer
+                </button>
+                <button id="hangupBtn" class="hangup-button hidden">
+                    <i class="material-icons">call_end</i>
+                    Hang Up
+                </button>
             </div>
         </div>
     </div>
