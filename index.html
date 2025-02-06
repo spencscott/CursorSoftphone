@@ -258,6 +258,10 @@
 
         #selected-mic-name {
             font-weight: 500;
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         #mic-status.error {
@@ -836,10 +840,15 @@
             }
         }
 
-        // Add this new function to update the mic display
+        // Update the mic display function
         function updateMicDisplay(micSelect) {
             const selectedMicName = micSelect.options[micSelect.selectedIndex]?.text || 'Default Microphone';
-            document.getElementById('selected-mic-name').textContent = selectedMicName;
+            const truncatedName = selectedMicName.length > 30 ? 
+                selectedMicName.substring(0, 30) + '...' : 
+                selectedMicName;
+            document.getElementById('selected-mic-name').textContent = truncatedName;
+            // Add title for full name on hover
+            document.getElementById('selected-mic-name').title = selectedMicName;
         }
 
         // Function to handle device changes
