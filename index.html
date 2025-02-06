@@ -217,11 +217,28 @@
             min-height: 52px;
         }
 
+        /* Container for all buttons */
+        .button-container {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 8px 0;
+            min-height: 52px;
+            position: relative;
+        }
+
+        /* Wrapper for each button */
+        .control-button-wrapper {
+            position: absolute;
+            width: 160px;
+        }
+
         /* Base button styles */
         .call-button,
         .answer-button,
         .hangup-button {
-            width: 160px;
+            width: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -229,20 +246,15 @@
             padding: 12px 24px;
             border-radius: 8px;
             font-weight: 500;
-            transition: all 0.3s ease;
             border: none;
             cursor: pointer;
-            position: absolute;
+            transition: all 0.3s ease;
         }
 
-        /* Individual button colors */
+        /* Button colors */
         .call-button {
             background: #34a853;
             color: white;
-        }
-
-        .call-button:hover {
-            background: #2d8745;
         }
 
         .answer-button {
@@ -250,29 +262,18 @@
             color: white;
         }
 
-        .answer-button:hover {
-            background: #2d8745;
-        }
-
         .hangup-button {
             background: #ea4335;
             color: white;
         }
 
-        .hangup-button:hover {
-            background: #d33828;
-        }
-
         /* Hidden state */
         .hidden {
-            opacity: 0;
-            visibility: hidden;
-            pointer-events: none;
-            position: absolute;
+            display: none;
         }
 
         /* Button icons */
-        .control-buttons button i {
+        .button-container button i {
             font-size: 20px;
         }
 
@@ -507,13 +508,6 @@
         .answer-button.hidden, .hangup-button.hidden {
             transform: translateX(-50%) scale(0.8);
         }
-
-        .button-container {
-            position: relative;
-            width: 100%;
-            display: flex;
-            justify-content: center;
-        }
     </style>
 </head>
 <body>
@@ -609,19 +603,25 @@
                 <span id="selected-mic-name"></span>
                 <span>ready</span>
             </div>
-            <div class="control-buttons">
-                <button id="callBtn" class="call-button">
-                    <i class="material-icons">call</i>
-                    Call
-                </button>
-                <button id="answerBtn" class="answer-button hidden">
-                    <i class="material-icons">call</i>
-                    Answer
-                </button>
-                <button id="hangupBtn" class="hangup-button hidden">
-                    <i class="material-icons">call_end</i>
-                    Hang Up
-                </button>
+            <div class="button-container">
+                <div class="control-button-wrapper">
+                    <button id="callBtn" class="call-button">
+                        <i class="material-icons">call</i>
+                        Call
+                    </button>
+                </div>
+                <div class="control-button-wrapper">
+                    <button id="answerBtn" class="answer-button hidden">
+                        <i class="material-icons">call</i>
+                        Answer
+                    </button>
+                </div>
+                <div class="control-button-wrapper">
+                    <button id="hangupBtn" class="hangup-button hidden">
+                        <i class="material-icons">call_end</i>
+                        Hang Up
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -699,47 +699,27 @@
 
                 userAgent.on('newRTCSession', (data) => {
                     session = data.session;
-                    const callBtn = document.getElementById('callBtn');
-                    const answerBtn = document.getElementById('answerBtn');
-                    const hangupBtn = document.getElementById('hangupBtn');
 
                     if (session.direction === 'incoming') {
-                        // Incoming call - show only answer button
-                        callBtn.classList.add('hidden');
-                        answerBtn.classList.remove('hidden');
-                        hangupBtn.classList.add('hidden');
+                        showAnswerButton();
                         updateCallStatus('Incoming Call...');
                     } else {
-                        // Outgoing call - show only hangup button
-                        callBtn.classList.add('hidden');
-                        answerBtn.classList.add('hidden');
-                        hangupBtn.classList.remove('hidden');
+                        showHangupButton();
                     }
 
                     session.on('accepted', () => {
-                        // Call connected - show only hangup button
-                        callBtn.classList.add('hidden');
-                        answerBtn.classList.add('hidden');
-                        hangupBtn.classList.remove('hidden');
+                        showHangupButton();
                         updateCallStatus('Connected');
                     });
 
                     session.on('ended', () => {
                         updateCallStatus('Ended');
-                        // Call ended - show only call button
-                        setTimeout(() => {
-                            callBtn.classList.remove('hidden');
-                            answerBtn.classList.add('hidden');
-                            hangupBtn.classList.add('hidden');
-                        }, 1000);
+                        setTimeout(showCallButton, 1000);
                     });
 
                     session.on('failed', () => {
                         updateCallStatus('Call Failed');
-                        // Call failed - show only call button
-                        callBtn.classList.remove('hidden');
-                        answerBtn.classList.add('hidden');
-                        hangupBtn.classList.add('hidden');
+                        showCallButton();
                     });
                 });
 
@@ -993,27 +973,24 @@
             }
         });
 
-        // Add answer button handler
-        document.getElementById('answerBtn').addEventListener('click', async function() {
-            if (session && session.direction === 'incoming') {
-                try {
-                    // Ensure we have microphone access before answering
-                    await navigator.mediaDevices.getUserMedia({ audio: true });
-                    
-                    const constraints = {
-                        audio: currentMicId ? { deviceId: { exact: currentMicId } } : true,
-                        video: false
-                    };
-                    await session.answer({ mediaConstraints: constraints });
-                    
-                } catch (error) {
-                    console.error('Microphone access denied:', error);
-                    alert('Please allow microphone access to answer calls');
-                    document.getElementById('mic-status').classList.add('error');
-                    document.getElementById('selected-mic-name').textContent = 'Microphone access denied';
-                }
-            }
-        });
+        // Update visibility functions
+        function showCallButton() {
+            document.getElementById('callBtn').classList.remove('hidden');
+            document.getElementById('answerBtn').classList.add('hidden');
+            document.getElementById('hangupBtn').classList.add('hidden');
+        }
+
+        function showAnswerButton() {
+            document.getElementById('callBtn').classList.add('hidden');
+            document.getElementById('answerBtn').classList.remove('hidden');
+            document.getElementById('hangupBtn').classList.add('hidden');
+        }
+
+        function showHangupButton() {
+            document.getElementById('callBtn').classList.add('hidden');
+            document.getElementById('answerBtn').classList.add('hidden');
+            document.getElementById('hangupBtn').classList.remove('hidden');
+        }
     })();
     </script>
 </body>
