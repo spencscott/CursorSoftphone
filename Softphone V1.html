@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebRTC Softphone</title>
+    <script src="jssip-3.10.0.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+            padding: 24px;
+        }
+
+        .title {
+            color: #1a73e8;
+            font-size: 24px;
+            font-weight: 400;
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .input-group {
+            margin-bottom: 16px;
+            position: relative;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #dadce0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s;
+            outline: none;
+        }
+
+        .input-group input:focus {
+            border-color: #1a73e8;
+            box-shadow: 0 0 0 2px rgba(26,115,232,0.2);
+        }
+
+        .input-group label {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: white;
+            padding: 0 4px;
+            color: #5f6368;
+            transition: all 0.3s;
+            pointer-events: none;
+        }
+
+        .input-group input:focus + label,
+        .input-group input:not(:placeholder-shown) + label {
+            top: 0;
+            font-size: 12px;
+            color: #1a73e8;
+        }
+
+        #status {
+            text-align: center;
+            margin: 16px 0;
+            font-size: 14px;
+            min-height: 20px;
+        }
+
+        button {
+            background: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        button:hover {
+            background: #1557b0;
+            box-shadow: 0 2px 6px rgba(26,115,232,0.3);
+        }
+
+        .dialpad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .dial-digit {
+            aspect-ratio: 1;
+            border-radius: 50%;
+            font-size: 24px;
+            background: #f8f9fa;
+            border: none;
+            color: #3c4043;
+            transition: all 0.2s;
+        }
+
+        .dial-digit:hover {
+            background: #e8f0fe;
+            color: #1a73e8;
+        }
+
+        #display {
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 12px;
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 16px;
+            color: #3c4043;
+            min-height: 60px;
+        }
+
+        .control-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .control-buttons button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .control-buttons button i {
+            font-size: 20px;
+        }
+
+        #softphone-ui {
+            margin-top: 24px;
+        }
+
+        .call-button {
+            background: #34a853;
+        }
+
+        .call-button:hover {
+            background: #2d8745;
+        }
+
+        .hangup-button {
+            background: #ea4335;
+        }
+
+        .hangup-button:hover {
+            background: #d33828;
+        }
+
+        #mic-status {
+            color: #34a853;  /* Google green */
+            background: #f1f8f1;
+            padding: 8px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        #mic-status.error {
+            color: #ea4335;  /* Google red */
+            background: #fef7f6;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            color: #1a73e8;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            padding: 8px;
+            cursor: pointer;
+            color: #5f6368;
+        }
+
+        .close-btn:hover {
+            color: #1a73e8;
+            background: none;
+            box-shadow: none;
+        }
+
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #dadce0;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-top: 8px;
+            outline: none;
+        }
+
+        select:focus {
+            border-color: #1a73e8;
+            box-shadow: 0 0 0 2px rgba(26,115,232,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">WebRTC Softphone</h1>
+        
+        <button id="settingsBtn" style="position: absolute; right: 24px; top: 24px; width: auto; padding: 8px;">
+            <i class="material-icons">settings</i>
+        </button>
+
+        <div id="settingsModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Audio Settings</h2>
+                    <button class="close-btn">
+                        <i class="material-icons">close</i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="input-group">
+                        <label for="micSelect">Microphone</label>
+                        <select id="micSelect"></select>
+                    </div>
+                    <div class="input-group">
+                        <label for="speakerSelect">Speaker</label>
+                        <select id="speakerSelect"></select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="registration">
+            <div class="input-group">
+                <input type="text" id="username" placeholder=" " value="sip:1010wp@loupdb.com">
+                <label>SIP Username</label>
+            </div>
+            <div class="input-group">
+                <input type="password" id="password" placeholder=" " value="8Z8Cbln9">
+                <label>Password</label>
+            </div>
+            <div class="input-group">
+                <input type="text" id="sipServer" placeholder=" " value="wss://alpha.netsapiens.com:9002">
+                <label>WebSocket URL</label>
+            </div>
+            <button id="registerBtn">
+                <i class="material-icons">login</i>
+                Register
+            </button>
+            <div id="status"></div>
+        </div>
+
+        <div id="softphone-ui" style="display:none;">
+            <div id="display"></div>
+            <div id="mic-status" style="text-align: center; margin-bottom: 16px; font-size: 14px;">
+                <i class="material-icons" style="vertical-align: middle; margin-right: 4px;">mic</i>
+                <span>Microphone ready</span>
+            </div>
+            <div class="dialpad">
+                <button class="dial-digit" data-digit="1">1</button>
+                <button class="dial-digit" data-digit="2">2</button>
+                <button class="dial-digit" data-digit="3">3</button>
+                <button class="dial-digit" data-digit="4">4</button>
+                <button class="dial-digit" data-digit="5">5</button>
+                <button class="dial-digit" data-digit="6">6</button>
+                <button class="dial-digit" data-digit="7">7</button>
+                <button class="dial-digit" data-digit="8">8</button>
+                <button class="dial-digit" data-digit="9">9</button>
+                <button class="dial-digit" data-digit="*">*</button>
+                <button class="dial-digit" data-digit="0">0</button>
+                <button class="dial-digit" data-digit="#">#</button>
+            </div>
+            <div class="control-buttons">
+                <button id="clearBtn">
+                    <i class="material-icons">backspace</i>
+                    Clear
+                </button>
+                <button id="callBtn" class="call-button">
+                    <i class="material-icons">call</i>
+                    Call
+                </button>
+                <button id="answerBtn" class="call-button">
+                    <i class="material-icons">call</i>
+                    Answer
+                </button>
+                <button id="hangupBtn" class="hangup-button">
+                    <i class="material-icons">call_end</i>
+                    Hangup
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        let userAgent;
+        let session;
+        const statusDisplay = document.getElementById('status');
+        let currentMicId = null;
+        let currentSpeakerId = null;
+        let stream = null;
+
+        function updateStatus(status, color = 'black') {
+            console.log('Status:', status);
+            statusDisplay.textContent = status;
+            statusDisplay.style.color = color;
+        }
+
+        document.getElementById('registerBtn').addEventListener('click', function() {
+            const sipUri = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const sipServer = document.getElementById('sipServer').value;
+            
+            if (!sipUri || !password || !sipServer) {
+                updateStatus('Please fill in all registration fields.', 'red');
+                return;
+            }
+
+            try {
+                const socket = new JsSIP.WebSocketInterface(sipServer);
+                const configuration = {
+                    sockets: [socket],
+                    uri: sipUri,
+                    password: password
+                };
+
+                console.log('Attempting connection with config:', {
+                    ...configuration,
+                    password: '***'
+                });
+
+                userAgent = new JsSIP.UA(configuration);
+
+                userAgent.on('connected', function() {
+                    updateStatus('WebSocket Connected - Registering...', 'blue');
+                    console.log('UA connected!');
+                });
+
+                userAgent.on('disconnected', function() {
+                    updateStatus('WebSocket Disconnected', 'red');
+                    console.log('UA disconnected');
+                });
+
+                userAgent.on('registered', async function() {
+                    try {
+                        // Request microphone access with stored preference
+                        const preferredMicId = localStorage.getItem('preferredMicId');
+                        const constraints = {
+                            audio: preferredMicId ? { deviceId: { exact: preferredMicId } } : true,
+                            video: false
+                        };
+                        
+                        stream = await navigator.mediaDevices.getUserMedia(constraints);
+                        
+                        updateStatus('Registered successfully!', 'green');
+                        console.log('UA registered!');
+                        document.getElementById('registration').style.display = 'none';
+                        document.getElementById('softphone-ui').style.display = 'block';
+                        
+                        // Update mic status
+                        document.getElementById('mic-status').innerHTML = `
+                            <i class="material-icons">mic</i>
+                            <span>Microphone ready</span>
+                        `;
+
+                        // Load audio devices
+                        await loadAudioDevices();
+                    } catch (error) {
+                        updateStatus('Microphone access denied. Please allow microphone access.', 'red');
+                        console.error('Microphone permission error:', error);
+                        
+                        document.getElementById('mic-status').innerHTML = `
+                            <i class="material-icons">mic_off</i>
+                            <span>Microphone access denied</span>
+                        `;
+                        document.getElementById('mic-status').classList.add('error');
+                    }
+                });
+
+                userAgent.on('registrationFailed', function(ev) {
+                    updateStatus(`Registration failed: ${ev.cause}`, 'red');
+                    console.error('Registration failed:', ev);
+                });
+
+                userAgent.on('newRTCSession', (data) => {
+                    session = data.session;
+
+                    if (session.direction === 'incoming') {
+                        const constraints = {
+                            audio: currentMicId ? { deviceId: { exact: currentMicId } } : true,
+                            video: false
+                        };
+                        session.answer({ mediaConstraints: constraints });
+                    }
+
+                    session.connection.ontrack = (event) => {
+                        console.log("Received remote track:", event.streams[0]);
+                        if (event.streams && event.streams[0]) {
+                            const remoteAudio = new Audio();
+                            remoteAudio.srcObject = event.streams[0];
+                            
+                            // Set the audio output device if supported
+                            if (typeof remoteAudio.setSinkId === 'function' && currentSpeakerId) {
+                                remoteAudio.setSinkId(currentSpeakerId)
+                                    .catch(error => console.error('Error setting audio output:', error));
+                            }
+                            
+                            remoteAudio.play();
+                        }
+                    };
+
+                    session.on('ended', () => {
+                        session = null;
+                        display.textContent = '';
+                    });
+                });
+
+                userAgent.start();
+
+            } catch (error) {
+                updateStatus(`Error creating user agent: ${error.message}`, 'red');
+                console.error('Full error:', error);
+            }
+        });
+
+        // Dialpad functionality
+        const display = document.getElementById('display');
+        document.querySelectorAll('.dial-digit').forEach(function(button) {
+            button.addEventListener('click', function() {
+                display.textContent += this.getAttribute('data-digit');
+            });
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', function() {
+            display.textContent = '';
+        });
+
+        // Call functionality
+        document.getElementById('callBtn').addEventListener('click', function() {
+            if (!userAgent) {
+                alert('Please register first');
+                return;
+            }
+
+            const number = display.textContent.trim();
+            if (!number) {
+                alert('Please enter a number to call');
+                return;
+            }
+
+            const options = {
+                mediaConstraints: {
+                    audio: true,
+                    video: false
+                }
+            };
+
+            try {
+                const sipUri = document.getElementById('username').value;
+                const domain = sipUri.split('@')[1].split('>')[0];
+                const destinationUri = `sip:${number}@${domain}`;
+                console.log('Calling:', destinationUri);
+                
+                userAgent.call(destinationUri, options);
+            } catch (error) {
+                alert('Error making call: ' + error.message);
+                console.error('Call error:', error);
+            }
+        });
+
+        // Answer functionality
+        document.getElementById('answerBtn').addEventListener('click', function() {
+            if (session && session.direction === 'incoming') {
+                session.answer({
+                    mediaConstraints: {
+                        audio: true,
+                        video: false
+                    }
+                });
+            } else {
+                alert('No incoming call to answer');
+            }
+        });
+
+        // Hangup functionality
+        document.getElementById('hangupBtn').addEventListener('click', function() {
+            if (session) {
+                session.terminate();
+                session = null;
+                display.textContent = '';
+            }
+        });
+
+        // Function to get available audio devices
+        async function loadAudioDevices() {
+            try {
+                // First ensure we have microphone permissions
+                await navigator.mediaDevices.getUserMedia({ audio: true });
+                
+                // Now enumerate devices
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const micSelect = document.getElementById('micSelect');
+                const speakerSelect = document.getElementById('speakerSelect');
+                
+                // Clear existing options
+                micSelect.innerHTML = '';
+                speakerSelect.innerHTML = '';
+
+                // Add microphones
+                const mics = devices.filter(device => device.kind === 'audioinput');
+                console.log('Available microphones:', mics);
+                mics.forEach(device => {
+                    const option = new Option(device.label || `Microphone (${device.deviceId.slice(0,5)})`, device.deviceId);
+                    micSelect.add(option);
+                });
+
+                // Add speakers
+                const speakers = devices.filter(device => device.kind === 'audiooutput');
+                console.log('Available speakers:', speakers);
+                speakers.forEach(device => {
+                    const option = new Option(device.label || `Speaker (${device.deviceId.slice(0,5)})`, device.deviceId);
+                    speakerSelect.add(option);
+                });
+
+                // Set previously selected devices if they exist
+                const savedMicId = localStorage.getItem('preferredMicId');
+                const savedSpeakerId = localStorage.getItem('preferredSpeakerId');
+                
+                if (savedMicId && micSelect.querySelector(`option[value="${savedMicId}"]`)) {
+                    micSelect.value = savedMicId;
+                    currentMicId = savedMicId;
+                } else if (micSelect.options.length) {
+                    currentMicId = micSelect.value;
+                }
+
+                if (savedSpeakerId && speakerSelect.querySelector(`option[value="${savedSpeakerId}"]`)) {
+                    speakerSelect.value = savedSpeakerId;
+                    currentSpeakerId = savedSpeakerId;
+                } else if (speakerSelect.options.length) {
+                    currentSpeakerId = speakerSelect.value;
+                }
+
+                // Log the current selections
+                console.log('Current microphone:', micSelect.options[micSelect.selectedIndex]?.text);
+                console.log('Current speaker:', speakerSelect.options[speakerSelect.selectedIndex]?.text);
+
+            } catch (error) {
+                console.error('Error loading audio devices:', error);
+                alert('Error accessing audio devices. Please ensure you have granted microphone permissions.');
+            }
+        }
+
+        // Function to handle device changes
+        async function handleDeviceChange() {
+            const micSelect = document.getElementById('micSelect');
+            const speakerSelect = document.getElementById('speakerSelect');
+
+            currentMicId = micSelect.value;
+            currentSpeakerId = speakerSelect.value;
+
+            // Store preferences
+            localStorage.setItem('preferredMicId', currentMicId);
+            localStorage.setItem('preferredSpeakerId', currentSpeakerId);
+
+            // Update active stream if exists
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        audio: { deviceId: { exact: currentMicId } }
+                    });
+                } catch (error) {
+                    console.error('Error switching microphone:', error);
+                }
+            }
+        }
+
+        // Settings modal controls
+        document.getElementById('settingsBtn').addEventListener('click', async () => {
+            try {
+                document.getElementById('settingsModal').style.display = 'flex';
+                await loadAudioDevices();
+            } catch (error) {
+                console.error('Error opening settings:', error);
+                alert('Error accessing audio devices. Please ensure you have granted microphone permissions.');
+            }
+        });
+
+        document.querySelector('.close-btn').addEventListener('click', () => {
+            document.getElementById('settingsModal').style.display = 'none';
+        });
+
+        document.getElementById('micSelect').addEventListener('change', handleDeviceChange);
+        document.getElementById('speakerSelect').addEventListener('change', handleDeviceChange);
+
+        // Add device change listener
+        navigator.mediaDevices.addEventListener('devicechange', async () => {
+            console.log('Audio devices changed, reloading device list...');
+            if (document.getElementById('settingsModal').style.display === 'flex') {
+                await loadAudioDevices();
+            }
+        });
+    })();
+    </script>
+</body>
+</html>
