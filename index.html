@@ -1,7 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>WebRTC Softphone</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Open Phone</title>
     <script src="jssip-3.10.0.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
@@ -31,6 +33,8 @@
             width: 100%;
             max-width: 400px;
             padding: 24px;
+            position: relative;
+            overflow: hidden;
         }
 
         .title {
@@ -38,7 +42,7 @@
             font-size: 24px;
             font-weight: 400;
             text-align: center;
-            margin-bottom: 24px;
+            margin-bottom: 16px;
         }
 
         .input-group {
@@ -110,41 +114,63 @@
         .dialpad {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            margin-top: 24px;
+            gap: 8px;
+            padding: 8px;
+            opacity: 1;
+            transition: opacity 0.3s ease-in-out;
         }
 
         .dial-digit {
             aspect-ratio: 1;
-            border-radius: 50%;
             font-size: 24px;
-            background: #f8f9fa;
             border: none;
+            border-radius: 12px;
+            background: #f8f9fa;
             color: #3c4043;
-            transition: all 0.2s;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            min-height: 48px;
         }
 
         .dial-digit:hover {
-            background: #e8f0fe;
-            color: #1a73e8;
+            background: #e8eaed;
+        }
+
+        .dial-digit:active {
+            background: #dadce0;
+            transform: scale(0.95);
+        }
+
+        .number-display-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+            gap: 8px;
         }
 
         #display {
+            flex-grow: 1;
             background: #f8f9fa;
-            padding: 16px;
+            padding: 12px;
             border-radius: 12px;
             text-align: center;
             font-size: 24px;
-            margin-bottom: 16px;
             color: #3c4043;
-            min-height: 60px;
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .control-buttons {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            margin-top: 16px;
+            display: flex;
+            gap: 8px;
+            position: relative;
         }
 
         .control-buttons button {
@@ -261,7 +287,7 @@
             background: #e8f5e9;
             border-radius: 8px;
             padding: 12px;
-            margin: 12px 0;
+            margin: 0 0 24px 0;
             text-align: center;
         }
 
@@ -296,12 +322,167 @@
         .calling {
             animation: pulse 1s infinite;
         }
+
+        .number-display-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+            gap: 8px;
+        }
+
+        .toggle-dialpad {
+            background: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            min-width: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            padding: 0;
+            position: relative;
+        }
+
+        .toggle-dialpad i {
+            font-size: 24px;
+            transition: transform 0.3s ease;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .toggle-dialpad.active {
+            background: #34a853;
+        }
+
+        .toggle-dialpad.active i {
+            transform: rotate(180deg);
+        }
+
+        .toggle-dialpad:hover {
+            background: #1557b0;
+        }
+
+        .toggle-dialpad.active:hover {
+            background: #2d9047;
+        }
+
+        .dialpad-container {
+            transition: height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            height: 0;
+            opacity: 0;
+            overflow: hidden;
+        }
+
+        .dialpad-container.visible {
+            opacity: 1;
+        }
+
+        /* Add responsive adjustments */
+        @media (max-width: 400px) {
+            .container {
+                padding: 16px;
+                border-radius: 16px;
+            }
+
+            .dial-digit {
+                font-size: 20px;
+                min-height: 40px;
+            }
+
+            #display {
+                font-size: 20px;
+                min-height: 40px;
+            }
+        }
+
+        .hangup-button {
+            background: #ea4335;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            opacity: 1;
+            transform: scale(1);
+            width: 100%;
+        }
+
+        .hangup-button.hidden {
+            opacity: 0;
+            transform: scale(0.8);
+            pointer-events: none;
+            position: absolute;
+            width: 100%;
+            left: 0;
+        }
+
+        .call-button.hidden {
+            opacity: 0;
+            transform: scale(0.8);
+            pointer-events: none;
+        }
+
+        #callBtn, #hangupBtn {
+            flex: 1;
+        }
+
+        .answer-button {
+            background: #34a853;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            opacity: 1;
+            transform: scale(1);
+            width: 100%;
+        }
+
+        .answer-button.hidden {
+            opacity: 0;
+            transform: scale(0.8);
+            pointer-events: none;
+            position: absolute;
+            width: 100%;
+            left: 0;
+        }
+
+        #callBtn, #hangupBtn, #answerBtn {
+            flex: 1;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1 class="title">WebRTC Softphone</h1>
+        <h1 class="title">Open Phone</h1>
         
+        <div id="call-status" style="display: none;">
+            <div class="status-container">
+                <div class="status-text">
+                    <i class="material-icons">call</i>
+                    <span id="call-state">Connected</span>
+                </div>
+                <div id="call-timer">00:00:00</div>
+            </div>
+        </div>
+
         <button id="settingsBtn" style="position: absolute; right: 24px; top: 24px; width: auto; padding: 8px;">
             <i class="material-icons">settings</i>
         </button>
@@ -348,24 +529,32 @@
         </div>
 
         <div id="softphone-ui" style="display:none;">
-            <div id="display"></div>
+            <div class="number-display-container">
+                <div id="display"></div>
+                <button id="toggleDialpad" class="toggle-dialpad">
+                    <i class="material-icons" style="display: flex; align-items: center; justify-content: center;">dialpad</i>
+                </button>
+            </div>
+            
+            <div id="dialpadContainer" class="dialpad-container hidden">
+                <div class="dialpad">
+                    <button class="dial-digit" data-digit="1">1</button>
+                    <button class="dial-digit" data-digit="2">2</button>
+                    <button class="dial-digit" data-digit="3">3</button>
+                    <button class="dial-digit" data-digit="4">4</button>
+                    <button class="dial-digit" data-digit="5">5</button>
+                    <button class="dial-digit" data-digit="6">6</button>
+                    <button class="dial-digit" data-digit="7">7</button>
+                    <button class="dial-digit" data-digit="8">8</button>
+                    <button class="dial-digit" data-digit="9">9</button>
+                    <button class="dial-digit" data-digit="*">*</button>
+                    <button class="dial-digit" data-digit="0">0</button>
+                    <button class="dial-digit" data-digit="#">#</button>
+                </div>
+            </div>
             <div id="mic-status" style="text-align: center; margin-bottom: 16px; font-size: 14px;">
                 <i class="material-icons" style="vertical-align: middle; margin-right: 4px;">mic</i>
                 <span>Microphone ready</span>
-            </div>
-            <div class="dialpad">
-                <button class="dial-digit" data-digit="1">1</button>
-                <button class="dial-digit" data-digit="2">2</button>
-                <button class="dial-digit" data-digit="3">3</button>
-                <button class="dial-digit" data-digit="4">4</button>
-                <button class="dial-digit" data-digit="5">5</button>
-                <button class="dial-digit" data-digit="6">6</button>
-                <button class="dial-digit" data-digit="7">7</button>
-                <button class="dial-digit" data-digit="8">8</button>
-                <button class="dial-digit" data-digit="9">9</button>
-                <button class="dial-digit" data-digit="*">*</button>
-                <button class="dial-digit" data-digit="0">0</button>
-                <button class="dial-digit" data-digit="#">#</button>
             </div>
             <div class="control-buttons">
                 <button id="clearBtn">
@@ -376,23 +565,14 @@
                     <i class="material-icons">call</i>
                     Call
                 </button>
-                <button id="answerBtn" class="call-button">
+                <button id="answerBtn" class="answer-button hidden">
                     <i class="material-icons">call</i>
                     Answer
                 </button>
-                <button id="hangupBtn" class="hangup-button">
+                <button id="hangupBtn" class="hangup-button hidden">
                     <i class="material-icons">call_end</i>
-                    Hangup
+                    Hang Up
                 </button>
-            </div>
-            <div id="call-status" style="display: none;">
-                <div class="status-container">
-                    <div class="status-text">
-                        <i class="material-icons">call</i>
-                        <span id="call-state">Connected</span>
-                    </div>
-                    <div id="call-timer">00:00:00</div>
-                </div>
             </div>
         </div>
     </div>
@@ -492,14 +672,21 @@
 
                 userAgent.on('newRTCSession', (data) => {
                     session = data.session;
+                    const hangupBtn = document.getElementById('hangupBtn');
+                    const callBtn = document.getElementById('callBtn');
+                    const answerBtn = document.getElementById('answerBtn');
 
                     if (session.direction === 'incoming') {
+                        // Incoming call - show answer button and hangup button
                         updateCallStatus('Incoming Call...');
-                        const constraints = {
-                            audio: currentMicId ? { deviceId: { exact: currentMicId } } : true,
-                            video: false
-                        };
-                        session.answer({ mediaConstraints: constraints });
+                        answerBtn.classList.remove('hidden');
+                        hangupBtn.classList.remove('hidden');
+                        callBtn.classList.add('hidden');
+                    } else {
+                        // Outgoing call - show only hangup button
+                        hangupBtn.classList.remove('hidden');
+                        callBtn.classList.add('hidden');
+                        answerBtn.classList.add('hidden');
                     }
 
                     session.connection.ontrack = (event) => {
@@ -520,14 +707,24 @@
 
                     session.on('accepted', () => {
                         updateCallStatus('Connected');
+                        // Hide answer button if it was showing
+                        answerBtn.classList.add('hidden');
                     });
 
                     session.on('ended', () => {
                         updateCallStatus('Ended');
+                        setTimeout(() => {
+                            hangupBtn.classList.add('hidden');
+                            answerBtn.classList.add('hidden');
+                            callBtn.classList.remove('hidden');
+                        }, 1000);
                     });
 
                     session.on('failed', () => {
                         updateCallStatus('Call Failed');
+                        hangupBtn.classList.add('hidden');
+                        answerBtn.classList.add('hidden');
+                        callBtn.classList.remove('hidden');
                     });
                 });
 
@@ -579,32 +776,11 @@
                 
                 userAgent.call(destinationUri, options);
                 updateCallStatus('Calling...');
+                document.getElementById('hangupBtn').classList.remove('hidden');
+                document.getElementById('callBtn').classList.add('hidden');
             } catch (error) {
                 alert('Error making call: ' + error.message);
                 console.error('Call error:', error);
-            }
-        });
-
-        // Answer functionality
-        document.getElementById('answerBtn').addEventListener('click', function() {
-            if (session && session.direction === 'incoming') {
-                session.answer({
-                    mediaConstraints: {
-                        audio: true,
-                        video: false
-                    }
-                });
-            } else {
-                alert('No incoming call to answer');
-            }
-        });
-
-        // Hangup functionality
-        document.getElementById('hangupBtn').addEventListener('click', function() {
-            if (session) {
-                session.terminate();
-                session = null;
-                display.textContent = '';
             }
         });
 
@@ -768,6 +944,61 @@
         window.addEventListener('beforeunload', () => {
             if (callTimer) {
                 clearInterval(callTimer);
+            }
+        });
+
+        document.getElementById('toggleDialpad').addEventListener('click', function() {
+            const dialpadContainer = document.getElementById('dialpadContainer');
+            const toggleButton = document.getElementById('toggleDialpad');
+            const dialpad = document.querySelector('.dialpad');
+            
+            if (dialpadContainer.classList.contains('hidden')) {
+                // Show dialpad
+                dialpadContainer.classList.remove('hidden');
+                // Force a reflow to ensure the transition works
+                dialpadContainer.offsetHeight;
+                dialpadContainer.style.height = dialpad.offsetHeight + 'px';
+                dialpadContainer.classList.add('visible');
+                toggleButton.classList.add('active');
+            } else {
+                // Hide dialpad with transition
+                dialpadContainer.style.height = '0';
+                dialpadContainer.classList.remove('visible');
+                toggleButton.classList.remove('active');
+                
+                // Add hidden class after transition completes
+                setTimeout(() => {
+                    if (dialpadContainer.style.height === '0px') {
+                        dialpadContainer.classList.add('hidden');
+                    }
+                }, 300); // Match the transition duration (0.3s = 300ms)
+            }
+        });
+
+        // Add this to ensure proper initial state
+        window.addEventListener('load', function() {
+            const dialpadContainer = document.getElementById('dialpadContainer');
+            const dialpad = document.querySelector('.dialpad');
+            if (!dialpadContainer.classList.contains('hidden')) {
+                dialpadContainer.style.height = dialpad.offsetHeight + 'px';
+                dialpadContainer.classList.add('visible');
+            }
+        });
+
+        // Add answer button handler
+        document.getElementById('answerBtn').addEventListener('click', async function() {
+            if (session && session.direction === 'incoming') {
+                try {
+                    const constraints = {
+                        audio: currentMicId ? { deviceId: { exact: currentMicId } } : true,
+                        video: false
+                    };
+                    await session.answer({ mediaConstraints: constraints });
+                    // Answer button will be hidden in the 'accepted' event handler
+                } catch (error) {
+                    console.error('Error answering call:', error);
+                    updateCallStatus('Answer Failed');
+                }
             }
         });
     })();
