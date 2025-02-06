@@ -221,14 +221,13 @@
         .button-container {
             width: 100%;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
+            gap: 8px;
             padding: 8px 0;
-            min-height: 52px;
-            position: relative;
         }
 
-        /* Combine button styles into one unified set */
+        /* Base button styles */
         .call-button,
         .answer-button,
         .hangup-button {
@@ -243,17 +242,6 @@
             border: none;
             cursor: pointer;
             transition: all 0.3s ease;
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
-        }
-
-        /* Single hidden state */
-        .hidden {
-            opacity: 0;
-            visibility: hidden;
-            pointer-events: none;
-            transition: opacity 0.3s ease, visibility 0.3s ease;
         }
 
         /* Button colors */
@@ -270,6 +258,16 @@
         .hangup-button {
             background: #ea4335;
             color: white;
+        }
+
+        /* Button hover effects */
+        .call-button:hover,
+        .answer-button:hover {
+            background: #2d9047;
+        }
+
+        .hangup-button:hover {
+            background: #d33828;
         }
 
         /* Button icons */
@@ -607,11 +605,11 @@
                     <i class="material-icons">call</i>
                     Call
                 </button>
-                <button id="answerBtn" class="answer-button hidden">
+                <button id="answerBtn" class="answer-button">
                     <i class="material-icons">call</i>
                     Answer
                 </button>
-                <button id="hangupBtn" class="hangup-button hidden">
+                <button id="hangupBtn" class="hangup-button">
                     <i class="material-icons">call_end</i>
                     Hang Up
                 </button>
