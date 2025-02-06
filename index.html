@@ -158,13 +158,54 @@
             background: #f8f9fa;
             padding: 12px;
             border-radius: 12px;
-            text-align: center;
-            font-size: 24px;
-            color: #3c4043;
             min-height: 48px;
             display: flex;
             align-items: center;
+            color: #3c4043;
+        }
+
+        .display-with-clear {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding-right: 4px !important;
+        }
+
+        #display-text {
+            flex-grow: 1;
+            text-align: center;
+            font-size: 24px;
+            margin-right: 8px;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .clear-button {
+            background: none;
+            border: none;
+            padding: 8px;
+            color: #5f6368;
+            cursor: pointer;
+            transition: color 0.2s ease;
+            display: flex;
+            align-items: center;
             justify-content: center;
+            min-width: 36px;
+            width: 36px;
+            height: 36px;
+            flex-shrink: 0;
+        }
+
+        .clear-button:hover {
+            color: #1a73e8;
+            background: none;
+        }
+
+        .clear-button i {
+            font-size: 20px;
         }
 
         .control-buttons {
@@ -205,18 +246,22 @@
         }
 
         #mic-status {
-            color: #34a853;  /* Google green */
+            color: #34a853;
             background: #f1f8f1;
-            padding: 8px;
+            padding: 8px 12px;
             border-radius: 8px;
             display: flex;
             align-items: center;
-            justify-content: center;
             gap: 8px;
+            font-size: 14px;
+        }
+
+        #selected-mic-name {
+            font-weight: 500;
         }
 
         #mic-status.error {
-            color: #ea4335;  /* Google red */
+            color: #ea4335;
             background: #fef7f6;
         }
 
@@ -321,14 +366,6 @@
 
         .calling {
             animation: pulse 1s infinite;
-        }
-
-        .number-display-container {
-            position: relative;
-            display: flex;
-            align-items: center;
-            margin-bottom: 16px;
-            gap: 8px;
         }
 
         .toggle-dialpad {
@@ -530,9 +567,14 @@
 
         <div id="softphone-ui" style="display:none;">
             <div class="number-display-container">
-                <div id="display"></div>
+                <div id="display" class="display-with-clear">
+                    <span id="display-text"></span>
+                    <button id="clearBtn" class="clear-button">
+                        <i class="material-icons">backspace</i>
+                    </button>
+                </div>
                 <button id="toggleDialpad" class="toggle-dialpad">
-                    <i class="material-icons" style="display: flex; align-items: center; justify-content: center;">dialpad</i>
+                    <i class="material-icons">dialpad</i>
                 </button>
             </div>
             
@@ -552,15 +594,12 @@
                     <button class="dial-digit" data-digit="#">#</button>
                 </div>
             </div>
-            <div id="mic-status" style="text-align: center; margin-bottom: 16px; font-size: 14px;">
-                <i class="material-icons" style="vertical-align: middle; margin-right: 4px;">mic</i>
-                <span>Microphone ready</span>
+            <div id="mic-status">
+                <i class="material-icons">mic</i>
+                <span id="selected-mic-name"></span>
+                <span>ready</span>
             </div>
             <div class="control-buttons">
-                <button id="clearBtn">
-                    <i class="material-icons">backspace</i>
-                    Clear
-                </button>
                 <button id="callBtn" class="call-button">
                     <i class="material-icons">call</i>
                     Call
@@ -737,15 +776,15 @@
         });
 
         // Dialpad functionality
-        const display = document.getElementById('display');
+        const displayText = document.getElementById('display-text');
         document.querySelectorAll('.dial-digit').forEach(function(button) {
             button.addEventListener('click', function() {
-                display.textContent += this.getAttribute('data-digit');
+                displayText.textContent += this.getAttribute('data-digit');
             });
         });
 
         document.getElementById('clearBtn').addEventListener('click', function() {
-            display.textContent = '';
+            displayText.textContent = '';
         });
 
         // Call functionality
@@ -755,7 +794,7 @@
                 return;
             }
 
-            const number = display.textContent.trim();
+            const number = displayText.textContent.trim();
             if (!number) {
                 alert('Please enter a number to call');
                 return;
@@ -787,10 +826,7 @@
         // Function to get available audio devices
         async function loadAudioDevices() {
             try {
-                // First ensure we have microphone permissions
                 await navigator.mediaDevices.getUserMedia({ audio: true });
-                
-                // Now enumerate devices
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 const micSelect = document.getElementById('micSelect');
                 const speakerSelect = document.getElementById('speakerSelect');
@@ -801,24 +837,13 @@
 
                 // Add microphones
                 const mics = devices.filter(device => device.kind === 'audioinput');
-                console.log('Available microphones:', mics);
                 mics.forEach(device => {
                     const option = new Option(device.label || `Microphone (${device.deviceId.slice(0,5)})`, device.deviceId);
                     micSelect.add(option);
                 });
 
-                // Add speakers
-                const speakers = devices.filter(device => device.kind === 'audiooutput');
-                console.log('Available speakers:', speakers);
-                speakers.forEach(device => {
-                    const option = new Option(device.label || `Speaker (${device.deviceId.slice(0,5)})`, device.deviceId);
-                    speakerSelect.add(option);
-                });
-
-                // Set previously selected devices if they exist
+                // Set and display selected microphone
                 const savedMicId = localStorage.getItem('preferredMicId');
-                const savedSpeakerId = localStorage.getItem('preferredSpeakerId');
-                
                 if (savedMicId && micSelect.querySelector(`option[value="${savedMicId}"]`)) {
                     micSelect.value = savedMicId;
                     currentMicId = savedMicId;
@@ -826,21 +851,20 @@
                     currentMicId = micSelect.value;
                 }
 
-                if (savedSpeakerId && speakerSelect.querySelector(`option[value="${savedSpeakerId}"]`)) {
-                    speakerSelect.value = savedSpeakerId;
-                    currentSpeakerId = savedSpeakerId;
-                } else if (speakerSelect.options.length) {
-                    currentSpeakerId = speakerSelect.value;
-                }
-
-                // Log the current selections
-                console.log('Current microphone:', micSelect.options[micSelect.selectedIndex]?.text);
-                console.log('Current speaker:', speakerSelect.options[speakerSelect.selectedIndex]?.text);
+                // Update the mic status display
+                updateMicDisplay(micSelect);
 
             } catch (error) {
                 console.error('Error loading audio devices:', error);
-                alert('Error accessing audio devices. Please ensure you have granted microphone permissions.');
+                document.getElementById('mic-status').classList.add('error');
+                document.getElementById('selected-mic-name').textContent = 'No microphone access';
             }
+        }
+
+        // Add this new function to update the mic display
+        function updateMicDisplay(micSelect) {
+            const selectedMicName = micSelect.options[micSelect.selectedIndex]?.text || 'Default Microphone';
+            document.getElementById('selected-mic-name').textContent = selectedMicName;
         }
 
         // Function to handle device changes
@@ -850,6 +874,9 @@
 
             currentMicId = micSelect.value;
             currentSpeakerId = speakerSelect.value;
+
+            // Update the mic display
+            updateMicDisplay(micSelect);
 
             // Store preferences
             localStorage.setItem('preferredMicId', currentMicId);
