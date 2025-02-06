@@ -670,43 +670,21 @@
 
                 userAgent.on('registered', async function() {
                     try {
-                        // Request microphone access with stored preference
-                        const preferredMicId = localStorage.getItem('preferredMicId');
-                        const constraints = {
-                            audio: preferredMicId ? { deviceId: { exact: preferredMicId } } : true,
-                            video: false
-                        };
-                        
-                        stream = await navigator.mediaDevices.getUserMedia(constraints);
-                        
-                        updateStatus('Registered successfully!', 'green');
-                        console.log('UA registered!');
-                        document.getElementById('registration').style.display = 'none';
-                        document.getElementById('softphone-ui').style.display = 'block';
-                        
-                        // Update mic status
-                        document.getElementById('mic-status').innerHTML = `
-                            <i class="material-icons">mic</i>
-                            <span>Microphone ready</span>
-                        `;
-
-                        // Load audio devices
+                        await navigator.mediaDevices.getUserMedia({ audio: true });
                         await loadAudioDevices();
-                    } catch (error) {
-                        updateStatus('Microphone access denied. Please allow microphone access.', 'red');
-                        console.error('Microphone permission error:', error);
                         
-                        document.getElementById('mic-status').innerHTML = `
-                            <i class="material-icons">mic_off</i>
-                            <span>Microphone access denied</span>
-                        `;
+                        document.getElementById('status').textContent = 'Ready';
+                        document.getElementById('softphone-ui').style.display = 'block';
+                        document.getElementById('registration').style.display = 'none';
+                    } catch (error) {
+                        console.error('Microphone access denied:', error);
                         document.getElementById('mic-status').classList.add('error');
+                        document.getElementById('selected-mic-name').textContent = 'Microphone access denied';
                     }
                 });
 
-                userAgent.on('registrationFailed', function(ev) {
-                    updateStatus(`Registration failed: ${ev.cause}`, 'red');
-                    console.error('Registration failed:', ev);
+                userAgent.on('registrationFailed', function(error) {
+                    document.getElementById('status').textContent = 'Registration failed: ' + error.cause;
                 });
 
                 userAgent.on('newRTCSession', (data) => {
@@ -788,7 +766,7 @@
         });
 
         // Call functionality
-        document.getElementById('callBtn').addEventListener('click', function() {
+        document.getElementById('callBtn').addEventListener('click', async function() {
             if (!userAgent) {
                 alert('Please register first');
                 return;
@@ -800,26 +778,23 @@
                 return;
             }
 
-            const options = {
-                mediaConstraints: {
-                    audio: true,
-                    video: false
-                }
-            };
-
             try {
-                const sipUri = document.getElementById('username').value;
-                const domain = sipUri.split('@')[1].split('>')[0];
-                const destinationUri = `sip:${number}@${domain}`;
-                console.log('Calling:', destinationUri);
-                
-                userAgent.call(destinationUri, options);
-                updateCallStatus('Calling...');
-                document.getElementById('hangupBtn').classList.remove('hidden');
-                document.getElementById('callBtn').classList.add('hidden');
+                await navigator.mediaDevices.getUserMedia({ audio: true });
+                const options = {
+                    mediaConstraints: {
+                        audio: currentMicId ? { deviceId: { exact: currentMicId } } : true,
+                        video: false
+                    }
+                };
+
+                // Extract domain from the SIP URI
+                const domain = userAgent.configuration.uri.host;
+                userAgent.call(`sip:${number}@${domain}`, options);
             } catch (error) {
-                alert('Error making call: ' + error.message);
-                console.error('Call error:', error);
+                console.error('Microphone access denied:', error);
+                alert('Please allow microphone access to make calls');
+                document.getElementById('mic-status').classList.add('error');
+                document.getElementById('selected-mic-name').textContent = 'Microphone access denied';
             }
         });
 
@@ -1016,15 +991,20 @@
         document.getElementById('answerBtn').addEventListener('click', async function() {
             if (session && session.direction === 'incoming') {
                 try {
+                    // Ensure we have microphone access before answering
+                    await navigator.mediaDevices.getUserMedia({ audio: true });
+                    
                     const constraints = {
                         audio: currentMicId ? { deviceId: { exact: currentMicId } } : true,
                         video: false
                     };
                     await session.answer({ mediaConstraints: constraints });
-                    // Answer button will be hidden in the 'accepted' event handler
+                    
                 } catch (error) {
-                    console.error('Error answering call:', error);
-                    updateCallStatus('Answer Failed');
+                    console.error('Microphone access denied:', error);
+                    alert('Please allow microphone access to answer calls');
+                    document.getElementById('mic-status').classList.add('error');
+                    document.getElementById('selected-mic-name').textContent = 'Microphone access denied';
                 }
             }
         });
