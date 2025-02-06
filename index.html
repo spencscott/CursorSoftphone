@@ -211,10 +211,10 @@
         .control-buttons {
             display: flex;
             justify-content: center;
+            align-items: center;
             padding: 8px 0;
             width: 100%;
-            position: relative;
-            height: 48px;
+            min-height: 52px;
         }
 
         /* Base button styles */
@@ -232,9 +232,6 @@
             transition: all 0.3s ease;
             border: none;
             cursor: pointer;
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
         }
 
         /* Individual button colors */
@@ -243,9 +240,17 @@
             color: white;
         }
 
+        .call-button:hover {
+            background: #2d8745;
+        }
+
         .answer-button {
             background: #34a853;
             color: white;
+        }
+
+        .answer-button:hover {
+            background: #2d8745;
         }
 
         .hangup-button {
@@ -253,9 +258,18 @@
             color: white;
         }
 
+        .hangup-button:hover {
+            background: #d33828;
+        }
+
         /* Hidden state */
         .hidden {
             display: none;
+        }
+
+        /* Button icons */
+        .control-buttons button i {
+            font-size: 20px;
         }
 
         #softphone-ui {
