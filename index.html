@@ -205,9 +205,13 @@
 
         .button-wrapper {
             width: 160px;
-            height: 48px;
+            height: auto;
             position: relative;
             transition: all 0.3s ease;
+        }
+
+        .button-wrapper:not(.hidden) {
+            height: 48px;
         }
 
         .button-wrapper.hidden {
