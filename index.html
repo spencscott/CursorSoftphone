@@ -674,6 +674,18 @@
                         await navigator.mediaDevices.getUserMedia({ audio: true });
                         await loadAudioDevices();
                         
+                        // Create audio element during registration
+                        let audioElement = document.createElement('audio');
+                        audioElement.id = 'remoteAudio';
+                        audioElement.autoplay = true;
+                        
+                        // Set initial speaker if available
+                        if (typeof audioElement.sinkId !== 'undefined' && currentSpeakerId) {
+                            await audioElement.setSinkId(currentSpeakerId)
+                                .catch(error => console.error('Error setting initial audio output:', error));
+                        }
+                        document.body.appendChild(audioElement);
+                        
                         document.getElementById('status').textContent = 'Ready';
                         document.getElementById('softphone-ui').style.display = 'block';
                         document.getElementById('registration').style.display = 'none';
@@ -692,6 +704,15 @@
                     session.on('accepted', function() {
                         updateCallStatus('Connected');
                         showHangupButton();
+                        
+                        // Update audio stream when call is connected
+                        const remoteStream = session.connection.getRemoteStreams()[0];
+                        if (remoteStream) {
+                            const audioElement = document.getElementById('remoteAudio');
+                            if (audioElement) {
+                                audioElement.srcObject = remoteStream;
+                            }
+                        }
                     });
 
                     session.on('ended', function() {
@@ -777,26 +798,53 @@
                 micSelect.innerHTML = '';
                 speakerSelect.innerHTML = '';
 
+                // Handle microphones
                 const mics = devices.filter(device => device.kind === 'audioinput');
                 mics.forEach(device => {
                     const option = new Option(device.label || `Microphone (${device.deviceId.slice(0,5)})`, device.deviceId);
                     micSelect.add(option);
                 });
 
+                // Add speaker handling
+                const speakers = devices.filter(device => device.kind === 'audiooutput');
+                speakers.forEach(device => {
+                    const option = new Option(device.label || `Speaker (${device.deviceId.slice(0,5)})`, device.deviceId);
+                    speakerSelect.add(option);
+                });
+
+                // Load saved preferences
                 const savedMicId = localStorage.getItem('preferredMicId');
+                const savedSpeakerId = localStorage.getItem('preferredSpeakerId');
+
                 if (savedMicId && micSelect.querySelector(`option[value="${savedMicId}"]`)) {
                     micSelect.value = savedMicId;
                     currentMicId = savedMicId;
-                } else if (micSelect.options.length) {
-                    currentMicId = micSelect.value;
+                }
+
+                if (savedSpeakerId && speakerSelect.querySelector(`option[value="${savedSpeakerId}"]`)) {
+                    speakerSelect.value = savedSpeakerId;
+                    currentSpeakerId = savedSpeakerId;
                 }
 
                 updateMicDisplay(micSelect);
 
+                // Set up audio output
+                const audioElement = document.createElement('audio');
+                audioElement.srcObject = session.connection.getRemoteStreams()[0];
+                audioElement.id = 'remoteAudio';
+                audioElement.autoplay = true;
+                
+                if (typeof audioElement.sinkId !== 'undefined') {
+                    audioElement.setSinkId(currentSpeakerId || 'default')
+                        .catch(error => console.error('Error setting audio output:', error));
+                }
+                
+                document.body.appendChild(audioElement);
+
             } catch (error) {
                 console.error('Error loading audio devices:', error);
                 document.getElementById('mic-status').classList.add('error');
-                document.getElementById('selected-mic-name').textContent = 'No microphone access';
+                document.getElementById('selected-mic-name').textContent = 'Audio device access error';
             }
         }
 
@@ -821,6 +869,17 @@
             localStorage.setItem('preferredMicId', currentMicId);
             localStorage.setItem('preferredSpeakerId', currentSpeakerId);
 
+            // Update audio output device
+            const audioElement = document.getElementById('remoteAudio');
+            if (audioElement && typeof audioElement.sinkId !== 'undefined') {
+                try {
+                    await audioElement.setSinkId(currentSpeakerId);
+                } catch (error) {
+                    console.error('Error switching speaker:', error);
+                }
+            }
+
+            // Update microphone
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
                 try {
