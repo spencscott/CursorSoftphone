@@ -92,23 +92,9 @@
         }
 
         button {
-            background: #1a73e8;
-            color: white;
             border: none;
-            border-radius: 8px;
-            padding: 12px 24px;
-            font-size: 16px;
             cursor: pointer;
             transition: all 0.3s;
-            width: 100%;
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        button:hover {
-            background: #1557b0;
-            box-shadow: 0 2px 6px rgba(26,115,232,0.3);
         }
 
         .dialpad {
@@ -208,48 +194,41 @@
             font-size: 20px;
         }
 
-        .control-buttons {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 8px 0;
-            width: 100%;
-            min-height: 52px;
-        }
-
-        /* Container for all buttons */
         .button-container {
             width: 100%;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 8px;
-            padding: 8px 0;
+            gap: 16px;
+            padding: 16px 0;
+            min-height: 180px;
         }
 
-        /* Base button styles */
+        .button-wrapper {
+            width: 160px;
+            height: 48px;
+            position: relative;
+        }
+
         .call-button,
         .answer-button,
         .hangup-button {
-            width: 160px;
+            width: 100%;
+            height: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
             padding: 12px 24px;
             border-radius: 8px;
+            font-size: 16px;
             font-weight: 500;
             border: none;
             cursor: pointer;
             transition: all 0.3s ease;
         }
 
-        /* Button colors */
-        .call-button {
-            background: #34a853;
-            color: white;
-        }
-
+        .call-button,
         .answer-button {
             background: #34a853;
             color: white;
@@ -260,19 +239,8 @@
             color: white;
         }
 
-        /* Button hover effects */
-        .call-button:hover,
-        .answer-button:hover {
-            background: #2d9047;
-        }
-
-        .hangup-button:hover {
-            background: #d33828;
-        }
-
-        /* Button icons */
-        .button-container button i {
-            font-size: 20px;
+        .hidden {
+            display: none;
         }
 
         #softphone-ui {
@@ -395,7 +363,6 @@
             font-weight: 500;
         }
 
-        /* Animation for incoming/outgoing calls */
         @keyframes pulse {
             0% { opacity: 1; }
             50% { opacity: 0.5; }
@@ -459,7 +426,6 @@
             opacity: 1;
         }
 
-        /* Add responsive adjustments */
         @media (max-width: 400px) {
             .container {
                 padding: 16px;
@@ -477,33 +443,25 @@
             }
         }
 
-        #callBtn, #hangupBtn, #answerBtn {
-            flex: 1;
-            max-width: 160px;
-            position: relative;
-            opacity: 1;
-            transform: scale(1);
-            transition: all 0.3s ease;
-        }
-
-        .hangup-button.hidden,
-        .answer-button.hidden,
-        .call-button.hidden {
-            opacity: 0;
-            transform: scale(0.8);
-            pointer-events: none;
-            position: absolute;
+        #registerBtn {
             width: 100%;
-            max-width: 160px;
+            background: #1a73e8;
+            color: white;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .answer-button, .hangup-button {
-            position: absolute;
-            transform: translateX(-50%) scale(1);
+        /* Add hover states for buttons */
+        .call-button:hover,
+        .answer-button:hover {
+            background: #2d9047;
         }
 
-        .answer-button.hidden, .hangup-button.hidden {
-            transform: translateX(-50%) scale(0.8);
+        .hangup-button:hover {
+            background: #d33828;
         }
     </style>
 </head>
@@ -601,18 +559,24 @@
                 <span>ready</span>
             </div>
             <div class="button-container">
-                <button id="callBtn" class="call-button">
-                    <i class="material-icons">call</i>
-                    Call
-                </button>
-                <button id="answerBtn" class="answer-button">
-                    <i class="material-icons">call</i>
-                    Answer
-                </button>
-                <button id="hangupBtn" class="hangup-button">
-                    <i class="material-icons">call_end</i>
-                    Hang Up
-                </button>
+                <div class="button-wrapper">
+                    <button id="callBtn" class="call-button">
+                        <i class="material-icons">call</i>
+                        Call
+                    </button>
+                </div>
+                <div class="button-wrapper">
+                    <button id="answerBtn" class="answer-button hidden">
+                        <i class="material-icons">call</i>
+                        Answer
+                    </button>
+                </div>
+                <div class="button-wrapper">
+                    <button id="hangupBtn" class="hangup-button hidden">
+                        <i class="material-icons">call_end</i>
+                        Hang Up
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -688,30 +652,64 @@
                     document.getElementById('status').textContent = 'Registration failed: ' + error.cause;
                 });
 
-                userAgent.on('newRTCSession', (data) => {
-                    session = data.session;
-
-                    if (session.direction === 'incoming') {
-                        showAnswerButton();
-                        updateCallStatus('Incoming Call...');
-                    } else {
-                        showHangupButton();
-                    }
-
-                    session.on('accepted', () => {
-                        showHangupButton();
+                function setupSessionHandlers(session) {
+                    session.on('accepted', function() {
                         updateCallStatus('Connected');
+                        showHangupButton();
                     });
 
-                    session.on('ended', () => {
+                    session.on('ended', function() {
                         updateCallStatus('Ended');
-                        setTimeout(showCallButton, 1000);
-                    });
-
-                    session.on('failed', () => {
-                        updateCallStatus('Call Failed');
                         showCallButton();
                     });
+
+                    session.on('failed', function() {
+                        updateCallStatus('Failed');
+                        showCallButton();
+                    });
+                }
+
+                // Add button event listeners
+                document.getElementById('callBtn').addEventListener('click', function() {
+                    const displayText = document.getElementById('display-text').textContent;
+                    if (displayText && userAgent) {
+                        const options = {
+                            mediaConstraints: { audio: true, video: false }
+                        };
+                        session = userAgent.call(displayText, options);
+                        setupSessionHandlers(session);
+                        showHangupButton();
+                        updateCallStatus('Calling');
+                    }
+                });
+
+                document.getElementById('answerBtn').addEventListener('click', function() {
+                    if (session) {
+                        session.answer({
+                            mediaConstraints: { audio: true, video: false }
+                        });
+                        setupSessionHandlers(session);
+                        showHangupButton();
+                        updateCallStatus('Connected');
+                    }
+                });
+
+                document.getElementById('hangupBtn').addEventListener('click', function() {
+                    if (session) {
+                        session.terminate();
+                        updateCallStatus('Ended');
+                        showCallButton();
+                    }
+                });
+
+                // Add incoming call handler
+                userAgent.on('newRTCSession', function(data) {
+                    session = data.session;
+                    if (session.direction === 'incoming') {
+                        showAnswerButton();
+                        updateCallStatus('Incoming Call');
+                        setupSessionHandlers(session);
+                    }
                 });
 
                 userAgent.start();
@@ -722,7 +720,6 @@
             }
         });
 
-        // Dialpad functionality
         const displayText = document.getElementById('display-text');
         document.querySelectorAll('.dial-digit').forEach(function(button) {
             button.addEventListener('click', function() {
@@ -734,43 +731,6 @@
             displayText.textContent = '';
         });
 
-        // Call functionality
-        document.getElementById('callBtn').addEventListener('click', async function() {
-            if (!userAgent) {
-                alert('Please register first');
-                return;
-            }
-
-            const number = displayText.textContent.trim();
-            if (!number) {
-                alert('Please enter a number to call');
-                return;
-            }
-
-            try {
-                await navigator.mediaDevices.getUserMedia({ audio: true });
-                const options = {
-                    mediaConstraints: {
-                        audio: currentMicId ? { deviceId: { exact: currentMicId } } : true,
-                        video: false
-                    }
-                };
-
-                // Extract domain from the SIP URI
-                const domain = userAgent.configuration.uri.host;
-                userAgent.call(`sip:${number}@${domain}`, options);
-                
-                // Show only hangup button
-                this.classList.add('hidden');
-                document.getElementById('hangupBtn').classList.remove('hidden');
-                document.getElementById('answerBtn').classList.add('hidden');
-            } catch (error) {
-                console.error('Microphone access denied:', error);
-                alert('Please allow microphone access to make calls');
-            }
-        });
-
-        // Function to get available audio devices
         async function loadAudioDevices() {
             try {
                 await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -778,18 +738,15 @@
                 const micSelect = document.getElementById('micSelect');
                 const speakerSelect = document.getElementById('speakerSelect');
                 
-                // Clear existing options
                 micSelect.innerHTML = '';
                 speakerSelect.innerHTML = '';
 
-                // Add microphones
                 const mics = devices.filter(device => device.kind === 'audioinput');
                 mics.forEach(device => {
                     const option = new Option(device.label || `Microphone (${device.deviceId.slice(0,5)})`, device.deviceId);
                     micSelect.add(option);
                 });
 
-                // Set and display selected microphone
                 const savedMicId = localStorage.getItem('preferredMicId');
                 if (savedMicId && micSelect.querySelector(`option[value="${savedMicId}"]`)) {
                     micSelect.value = savedMicId;
@@ -798,7 +755,6 @@
                     currentMicId = micSelect.value;
                 }
 
-                // Update the mic status display
                 updateMicDisplay(micSelect);
 
             } catch (error) {
@@ -808,18 +764,15 @@
             }
         }
 
-        // Update the mic display function
         function updateMicDisplay(micSelect) {
             const selectedMicName = micSelect.options[micSelect.selectedIndex]?.text || 'Default Microphone';
             const truncatedName = selectedMicName.length > 30 ? 
                 selectedMicName.substring(0, 30) + '...' : 
                 selectedMicName;
             document.getElementById('selected-mic-name').textContent = truncatedName;
-            // Add title for full name on hover
             document.getElementById('selected-mic-name').title = selectedMicName;
         }
 
-        // Function to handle device changes
         async function handleDeviceChange() {
             const micSelect = document.getElementById('micSelect');
             const speakerSelect = document.getElementById('speakerSelect');
@@ -827,14 +780,11 @@
             currentMicId = micSelect.value;
             currentSpeakerId = speakerSelect.value;
 
-            // Update the mic display
             updateMicDisplay(micSelect);
 
-            // Store preferences
             localStorage.setItem('preferredMicId', currentMicId);
             localStorage.setItem('preferredSpeakerId', currentSpeakerId);
 
-            // Update active stream if exists
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
                 try {
@@ -847,7 +797,6 @@
             }
         }
 
-        // Settings modal controls
         document.getElementById('settingsBtn').addEventListener('click', async () => {
             try {
                 document.getElementById('settingsModal').style.display = 'flex';
@@ -865,7 +814,6 @@
         document.getElementById('micSelect').addEventListener('change', handleDeviceChange);
         document.getElementById('speakerSelect').addEventListener('change', handleDeviceChange);
 
-        // Add device change listener
         navigator.mediaDevices.addEventListener('devicechange', async () => {
             console.log('Audio devices changed, reloading device list...');
             if (document.getElementById('settingsModal').style.display === 'flex') {
@@ -881,13 +829,11 @@
             callStatus.style.display = 'block';
             callState.textContent = state;
 
-            // Update styles based on state
             if (state === 'Connected') {
                 callStatus.style.backgroundColor = '#e8f5e9';
                 callState.parentElement.classList.remove('calling');
                 callState.parentElement.style.color = '#34a853';
                 
-                // Start timer if not already started
                 if (!callTimer) {
                     callStartTime = Date.now();
                     callTimer = setInterval(updateCallTimer, 1000);
@@ -900,7 +846,6 @@
                     callTimerDisplay.textContent = '00:00:00';
                 }, 2000);
             } else {
-                // For states like 'Calling' or 'Incoming Call'
                 callStatus.style.backgroundColor = '#e3f2fd';
                 callState.parentElement.classList.add('calling');
                 callState.parentElement.style.color = '#1a73e8';
@@ -919,7 +864,6 @@
                 `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         }
 
-        // Clean up timer when page is unloaded
         window.addEventListener('beforeunload', () => {
             if (callTimer) {
                 clearInterval(callTimer);
@@ -932,29 +876,24 @@
             const dialpad = document.querySelector('.dialpad');
             
             if (dialpadContainer.classList.contains('hidden')) {
-                // Show dialpad
                 dialpadContainer.classList.remove('hidden');
-                // Force a reflow to ensure the transition works
                 dialpadContainer.offsetHeight;
                 dialpadContainer.style.height = dialpad.offsetHeight + 'px';
                 dialpadContainer.classList.add('visible');
                 toggleButton.classList.add('active');
             } else {
-                // Hide dialpad with transition
                 dialpadContainer.style.height = '0';
                 dialpadContainer.classList.remove('visible');
                 toggleButton.classList.remove('active');
                 
-                // Add hidden class after transition completes
                 setTimeout(() => {
                     if (dialpadContainer.style.height === '0px') {
                         dialpadContainer.classList.add('hidden');
                     }
-                }, 300); // Match the transition duration (0.3s = 300ms)
+                }, 300);
             }
         });
 
-        // Add this to ensure proper initial state
         window.addEventListener('load', function() {
             const dialpadContainer = document.getElementById('dialpadContainer');
             const dialpad = document.querySelector('.dialpad');
@@ -964,7 +903,6 @@
             }
         });
 
-        // Update visibility functions
         function showCallButton() {
             document.getElementById('callBtn').classList.remove('hidden');
             document.getElementById('answerBtn').classList.add('hidden');
