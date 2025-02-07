@@ -199,15 +199,14 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 16px;
-            padding: 16px 0;
+            position: relative;
         }
 
         .button-wrapper {
             width: 160px;
-            height: auto;
-            position: relative;
-            transition: all 0.3s ease;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
         }
 
         .button-wrapper:not(.hidden) {
@@ -600,13 +599,13 @@
                         Call
                     </button>
                 </div>
-                <div class="button-wrapper" id="answerBtnWrapper">
+                <div class="button-wrapper hidden" id="answerBtnWrapper">
                     <button id="answerBtn" class="answer-button">
                         <i class="material-icons">call</i>
                         Answer
                     </button>
                 </div>
-                <div class="button-wrapper" id="hangupBtnWrapper">
+                <div class="button-wrapper hidden" id="hangupBtnWrapper">
                     <button id="hangupBtn" class="hangup-button">
                         <i class="material-icons">call_end</i>
                         Hang Up
@@ -939,21 +938,21 @@
         });
 
         function showCallButton() {
-            document.getElementById('callBtn').classList.remove('hidden');
-            document.getElementById('answerBtn').classList.add('hidden');
-            document.getElementById('hangupBtn').classList.add('hidden');
+            document.getElementById('callBtnWrapper').classList.remove('hidden');
+            document.getElementById('answerBtnWrapper').classList.add('hidden');
+            document.getElementById('hangupBtnWrapper').classList.add('hidden');
         }
 
         function showAnswerButton() {
-            document.getElementById('callBtn').classList.add('hidden');
-            document.getElementById('answerBtn').classList.remove('hidden');
-            document.getElementById('hangupBtn').classList.add('hidden');
+            document.getElementById('callBtnWrapper').classList.add('hidden');
+            document.getElementById('answerBtnWrapper').classList.remove('hidden');
+            document.getElementById('hangupBtnWrapper').classList.add('hidden');
         }
 
         function showHangupButton() {
-            document.getElementById('callBtn').classList.add('hidden');
-            document.getElementById('answerBtn').classList.add('hidden');
-            document.getElementById('hangupBtn').classList.remove('hidden');
+            document.getElementById('callBtnWrapper').classList.add('hidden');
+            document.getElementById('answerBtnWrapper').classList.add('hidden');
+            document.getElementById('hangupBtnWrapper').classList.remove('hidden');
         }
     })();
     </script>
