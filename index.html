@@ -550,6 +550,26 @@
         .ringtone-preview:hover {
             background: #d2e3fc;
         }
+
+        .caption-container {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            padding: 12px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            font-size: 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100px; /* Adjust based on your design */
+            overflow-y: auto;
+        }
+
+        .captions {
+            margin: 0 auto;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -678,6 +698,10 @@
                     </button>
                 </div>
             </div>
+        </div>
+
+        <div id="captionContainer" class="caption-container hidden">
+            <div id="captions" class="captions"></div>
         </div>
     </div>
 
@@ -825,6 +849,8 @@
                         updateCallStatus('Call Ended');
                         showCallButton();
                         stopRingtone();
+                        recognition.stop();
+                        hideCaptionContainer();
                     });
 
                     session.on('rejected', function() {
@@ -900,6 +926,7 @@
                         setupSessionHandlers(session);
                         showHangupButton();
                         updateCallStatus('Connected');
+                        startSpeechRecognition();
                     }
                 });
 
@@ -1235,6 +1262,40 @@
             ringtoneAudio.pause();
             ringtoneAudio.currentTime = 0;
             ringtoneAudio.loop = false;
+        }
+
+        function startSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (SpeechRecognition) {
+                let recognition = new SpeechRecognition();
+                recognition.lang = 'en-US';
+                recognition.interimResults = true;
+                recognition.continuous = true;
+
+                recognition.onresult = function(event) {
+                    const transcript = Array.from(event.results)
+                        .map(result => result[0])
+                        .map(result => result.transcript)
+                        .join('');
+                    document.getElementById('captions').textContent = transcript;
+                };
+
+                recognition.onerror = function(event) {
+                    console.error('Speech recognition error', event.error);
+                };
+
+                recognition.start();
+            } else {
+                console.warn('Speech recognition not supported in this browser.');
+            }
+        }
+
+        function showCaptionContainer() {
+            document.getElementById('captionContainer').classList.remove('hidden');
+        }
+
+        function hideCaptionContainer() {
+            document.getElementById('captionContainer').classList.add('hidden');
         }
     })();
     </script>
