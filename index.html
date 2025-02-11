@@ -731,6 +731,8 @@
         let callStartTime;
         let ringtoneAudio = new Audio();
         let selectedRingtone = null;
+        let mediaRecorder;
+        let recordedChunks = [];
 
         function updateStatus(status, color = 'black') {
             console.log('Status:', status);
@@ -1337,41 +1339,53 @@
             document.getElementById('selectedRecordingFolderName').textContent = dirHandle.name;
         });
 
-        let mediaRecorder;
-        let recordedChunks = [];
-
         function startRecording(stream) {
+            console.log('Starting recording...');
             mediaRecorder = new MediaRecorder(stream);
 
             mediaRecorder.ondataavailable = function(e) {
+                console.log('Data available from MediaRecorder:', e.data.size + ' bytes');
                 if (e.data.size > 0) {
                     recordedChunks.push(e.data);
                 }
             };
 
             mediaRecorder.onstop = async () => {
+                console.log('Stopping recording, preparing to save...');
                 const blob = new Blob(recordedChunks, {
                     type: 'audio/webm'
                 });
                 recordedChunks = [];
 
-                // Save the recording to the selected folder
-                const folderHandle = localStorage.getItem('recordingFolder');
-                if (folderHandle) {
-                    const fileHandle = await folderHandle.getFileHandle('recording.webm', { create: true });
-                    const writable = await fileHandle.createWritable();
-                    await writable.write(blob);
-                    await writable.close();
-                    alert('Recording saved.');
+                // Attempt to save the recording
+                try {
+                    const folderHandle = localStorage.getItem('recordingFolder');
+                    if (folderHandle) {
+                        console.log('Saving recording to folder...');
+                        const fileHandle = await folderHandle.getFileHandle('recording.webm', { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(blob);
+                        await writable.close();
+                        console.log('Recording saved successfully.');
+                        alert('Recording saved.');
+                    } else {
+                        console.log('No folder handle available in localStorage.');
+                    }
+                } catch (error) {
+                    console.error('Failed to save recording:', error);
                 }
             };
 
             mediaRecorder.start();
+            console.log('MediaRecorder started.');
         }
 
         function stopRecording() {
             if (mediaRecorder) {
+                console.log('Stopping the MediaRecorder...');
                 mediaRecorder.stop();
+            } else {
+                console.log('No MediaRecorder to stop.');
             }
         }
     })();
