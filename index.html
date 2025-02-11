@@ -644,17 +644,17 @@
             }
 
             try {
-                const socket = new JsSIP.WebSocketInterface('wss://alpha1.netsapiens.com:7443');
+                const socket = new JsSIP.WebSocketInterface('wss://loupdb.com:9002');
                 const configuration = {
                     sockets: [socket],
                     uri: `sip:1010wp@loupdb.com`,
                     password: password,
                     realm: 'loupdb.com',
                     contact_uri: `sip:1010wp@loupdb.com`,
-                    registrar_server: 'sip:alpha1.netsapiens.com:5060',
-                    outbound_proxy_set: ['sip:alpha1.netsapiens.com:5060'],
+                    authorization_user: '1010wp',
                     display_name: '1010wp',
-                    authorization_user: '1010wp'
+                    register_expires: 300,
+                    session_timers: false
                 };
 
                 console.log('Attempting connection with config:', {
