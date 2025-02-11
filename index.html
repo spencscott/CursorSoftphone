@@ -718,74 +718,32 @@
                         status: session.status
                     });
 
-                    session.on('accepted', function(event) {
-                        console.log('Call Accepted:', {
-                            request: event.request,
-                            response: event.response,
-                            originator: event.originator
-                        });
+                    session.on('progress', function(e) {
+                        console.log('Call is in progress');
+                        updateCallStatus('Ringing...');
+                    });
+
+                    session.on('connecting', function(e) {
+                        console.log('Call is connecting...');
+                        updateCallStatus('Connecting...');
+                    });
+
+                    session.on('accepted', function(e) {
+                        console.log('Call has been accepted');
                         updateCallStatus('Connected');
                         showHangupButton();
-                        
-                        // Set up audio when call is connected
-                        const remoteStream = session.connection.getRemoteStreams()[0];
-                        if (remoteStream) {
-                            const audioElement = document.getElementById('remoteAudio');
-                            if (audioElement) {
-                                console.log('Setting up remote audio stream');
-                                // Remove the old stream first
-                                audioElement.srcObject = null;
-                                // Set new stream and play
-                                audioElement.srcObject = remoteStream;
-                                // Add error handling for play()
-                                audioElement.play().catch(e => {
-                                    console.error('Error playing audio, retrying...', e);
-                                    // Try playing again after a short delay
-                                    setTimeout(() => {
-                                        audioElement.play().catch(e => console.error('Second play attempt failed:', e));
-                                    }, 100);
-                                });
-                            } else {
-                                console.error('Audio element not found');
-                            }
-                        } else {
-                            console.error('No remote stream available');
-                        }
                     });
 
-                    session.on('connecting', function(event) {
-                        console.log('Call Connecting:', {
-                            request: event.request,
-                            response: event.response,
-                            originator: event.originator
-                        });
-                    });
-
-                    session.on('progress', function(event) {
-                        console.log('Call Progress:', {
-                            request: event.request,
-                            response: event.response,
-                            originator: event.originator
-                        });
-                        updateCallStatus('Ringing');
-                    });
-
-                    session.on('failed', function(event) {
-                        console.log('Call Failed:', {
-                            request: event.request,
-                            response: event.response,
-                            originator: event.originator,
-                            cause: event.cause
-                        });
-                        console.error('Call failed:', event);
-                        updateCallStatus('Failed');
+                    session.on('failed', function(e) {
+                        console.error('Call failed:', e);
+                        updateCallStatus('Call Failed');
                         showCallButton();
-                        
-                        // Clean up audio
-                        const audioElement = document.getElementById('remoteAudio');
-                        if (audioElement) {
-                            audioElement.srcObject = null;
-                        }
+                    });
+
+                    session.on('ended', function(e) {
+                        console.log('Call ended');
+                        updateCallStatus('Call Ended');
+                        showCallButton();
                     });
                 }
 
@@ -803,16 +761,11 @@
                             }
                             
                             // Use the same SIP URI format as successful inbound calls
-                            const callNumber = `sip:${phoneNumber}@192.81.237.20`;
+                            const callNumber = `sip:${phoneNumber}@192.81.237.20:9002;transport=ws`;
 
                             const options = {
                                 mediaConstraints: { 
-                                    audio: {
-                                        // Match the successful inbound audio codecs
-                                        codecs: ['PCMU', 'PCMA', 'G729'],
-                                        echoCancellation: true,
-                                        noiseSuppression: true
-                                    },
+                                    audio: true,
                                     video: false 
                                 },
                                 pcConfig: {
@@ -820,25 +773,22 @@
                                         { urls: ['stun:stun.l.google.com:19302'] }
                                     ]
                                 },
-                                sessionTimers: {
-                                    enabled: true,
-                                    refreshMethod: 'UPDATE',
-                                    defaultExpires: 90
+                                rtcpMuxPolicy: 'require',
+                                rtcOfferConstraints: {
+                                    offerToReceiveAudio: true,
+                                    offerToReceiveVideo: false
                                 },
                                 extraHeaders: [
                                     'Allow: INVITE,ACK,CANCEL,BYE,UPDATE,OPTIONS',
-                                    'Server: NetSapiens SiPBx',
+                                    'Max-Forwards: 20',
+                                    'Contact: <sip:136.179.46.187:9002;transport=ws>',
                                     'Content-Type: application/sdp'
                                 ],
-                                rtcOfferConstraints: {
-                                    // Match the successful inbound SDP parameters
-                                    offerToReceiveAudio: true,
-                                    offerToReceiveVideo: false,
-                                    voiceActivityDetection: false
-                                }
+                                sessionTimers: false,
+                                mediaStream: stream // Use the existing audio stream
                             };
 
-                            console.log('Initiating call to:', callNumber, 'with options:', options);
+                            console.log('Initiating call to:', callNumber);
                             session = userAgent.call(callNumber, options);
                             setupSessionHandlers(session);
                             showHangupButton();
