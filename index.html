@@ -531,6 +531,7 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            max-width: 150px;
         }
 
         .ringtone-preview {
@@ -587,12 +588,11 @@
                         <select id="speakerSelect"></select>
                     </div>
                     <div class="input-group">
-                        <label for="ringtoneInput">Ringtone</label>
                         <div class="ringtone-container">
                             <input type="file" id="ringtoneInput" accept="audio/*" style="display: none;">
                             <button id="selectRingtone" class="ringtone-button">
                                 <i class="material-icons">music_note</i>
-                                Select Ringtone
+                                Ringtone
                             </button>
                             <span id="selectedRingtoneName">Default Ringtone</span>
                             <button id="playRingtone" class="ringtone-preview">
@@ -807,22 +807,38 @@
                     });
 
                     // Add failure handling
-                    session.on('failed', function(event) {
-                        console.error('Call failed:', event);
-                        updateCallStatus('Failed');
+                    session.on('failed', function(e) {
+                        console.log('Call failed:', e);
+                        updateCallStatus('Call Failed');
                         showCallButton();
-                        
-                        // Clean up audio
-                        const audioElement = document.getElementById('remoteAudio');
-                        if (audioElement) {
-                            audioElement.srcObject = null;
-                        }
+                        stopRingtone();
                     });
 
                     // Add progress handling
                     session.on('progress', function() {
                         console.log('Call in progress...');
                         updateCallStatus('Ringing');
+                    });
+
+                    session.on('ended', function() {
+                        console.log('Call ended');
+                        updateCallStatus('Call Ended');
+                        showCallButton();
+                        stopRingtone();
+                    });
+
+                    session.on('rejected', function() {
+                        console.log('Call rejected');
+                        updateCallStatus('Call Rejected');
+                        showCallButton();
+                        stopRingtone();
+                    });
+
+                    session.on('canceled', function() {
+                        console.log('Call canceled');
+                        updateCallStatus('Call Canceled');
+                        showCallButton();
+                        stopRingtone();
                     });
                 }
 
@@ -891,6 +907,7 @@
                         session.terminate();
                         updateCallStatus('Ended');
                         showCallButton();
+                        stopRingtone();
                     }
                 });
 
@@ -1212,6 +1229,12 @@
         ringtoneAudio.addEventListener('ended', () => {
             document.getElementById('playRingtone').querySelector('i').textContent = 'play_arrow';
         });
+
+        function stopRingtone() {
+            ringtoneAudio.pause();
+            ringtoneAudio.currentTime = 0;
+            ringtoneAudio.loop = false;
+        }
     })();
     </script>
 </body>
