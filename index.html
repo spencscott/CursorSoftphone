@@ -765,22 +765,36 @@
                     const displayText = document.getElementById('display-text').textContent;
                     if (displayText && userAgent) {
                         try {
-                            // Format the number properly
-                            let callNumber = displayText.trim();
-                            if (!callNumber.startsWith('sip:')) {
-                                callNumber = `sip:${callNumber}@loupdb.com`;  // Add your SIP domain
+                            // Format the number properly for external calls
+                            let phoneNumber = displayText.trim();
+                            
+                            // If it's a US number (10 digits), add '1' prefix
+                            if (/^\d{10}$/.test(phoneNumber)) {
+                                phoneNumber = '1' + phoneNumber;
                             }
+                            
+                            // Format the SIP URI for outbound calls
+                            const callNumber = `sip:${phoneNumber}@alpha1.netsapiens.com`;
 
                             const options = {
-                                mediaConstraints: { audio: true, video: false },
+                                mediaConstraints: { 
+                                    audio: true, 
+                                    video: false 
+                                },
                                 pcConfig: {
                                     iceServers: [
                                         { urls: ['stun:stun.l.google.com:19302'] }
                                     ]
-                                }
+                                },
+                                extraHeaders: [
+                                    'Allow: INVITE,ACK,CANCEL,BYE,UPDATE,OPTIONS',
+                                    'Max-Forwards: 70',
+                                    `Contact: <sip:1010wp@${window.location.hostname}>`,
+                                    'Content-Type: application/sdp'
+                                ]
                             };
 
-                            console.log('Initiating call to:', callNumber);
+                            console.log('Initiating call to:', callNumber, 'with options:', options);
                             session = userAgent.call(callNumber, options);
                             setupSessionHandlers(session);
                             showHangupButton();
