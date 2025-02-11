@@ -893,6 +893,7 @@
 
                 document.getElementById('answerBtn').addEventListener('click', function() {
                     if (session) {
+                        stopRingtone();
                         session.answer({
                             mediaConstraints: { audio: true, video: false }
                         });
