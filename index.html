@@ -765,10 +765,17 @@
                     const displayText = document.getElementById('display-text').textContent;
                     if (displayText && userAgent) {
                         try {
-                            // Format the number properly
+                            // Format the number properly for external calls
                             let callNumber = displayText.trim();
+                            
+                            // If it's a US number (10 digits), add '1' prefix
+                            if (/^\d{10}$/.test(callNumber)) {
+                                callNumber = '1' + callNumber;
+                            }
+                            
+                            // Add proper SIP formatting
                             if (!callNumber.startsWith('sip:')) {
-                                callNumber = `sip:${callNumber}@loupdb.com`;  // Add your SIP domain
+                                callNumber = `sip:${callNumber}@loupdb.com`;
                             }
 
                             const options = {
@@ -777,7 +784,10 @@
                                     iceServers: [
                                         { urls: ['stun:stun.l.google.com:19302'] }
                                     ]
-                                }
+                                },
+                                extraHeaders: [
+                                    'X-Call-Type: external'  // Add header to indicate external call
+                                ]
                             };
 
                             console.log('Initiating call to:', callNumber);
