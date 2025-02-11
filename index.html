@@ -710,7 +710,20 @@
                 });
 
                 function setupSessionHandlers(session) {
-                    session.on('accepted', function() {
+                    console.log('Session Details:', {
+                        direction: session.direction,
+                        connection: session.connection,
+                        local_identity: session.local_identity,
+                        remote_identity: session.remote_identity,
+                        status: session.status
+                    });
+
+                    session.on('accepted', function(event) {
+                        console.log('Call Accepted:', {
+                            request: event.request,
+                            response: event.response,
+                            originator: event.originator
+                        });
                         updateCallStatus('Connected');
                         showHangupButton();
                         
@@ -740,8 +753,30 @@
                         }
                     });
 
-                    // Add failure handling
+                    session.on('connecting', function(event) {
+                        console.log('Call Connecting:', {
+                            request: event.request,
+                            response: event.response,
+                            originator: event.originator
+                        });
+                    });
+
+                    session.on('progress', function(event) {
+                        console.log('Call Progress:', {
+                            request: event.request,
+                            response: event.response,
+                            originator: event.originator
+                        });
+                        updateCallStatus('Ringing');
+                    });
+
                     session.on('failed', function(event) {
+                        console.log('Call Failed:', {
+                            request: event.request,
+                            response: event.response,
+                            originator: event.originator,
+                            cause: event.cause
+                        });
                         console.error('Call failed:', event);
                         updateCallStatus('Failed');
                         showCallButton();
@@ -751,12 +786,6 @@
                         if (audioElement) {
                             audioElement.srcObject = null;
                         }
-                    });
-
-                    // Add progress handling
-                    session.on('progress', function() {
-                        console.log('Call in progress...');
-                        updateCallStatus('Ringing');
                     });
                 }
 
@@ -825,8 +854,14 @@
                 });
 
                 // Add incoming call handler
-                userAgent.on('newRTCSession', function(data) {
-                    session = data.session;
+                userAgent.on('newRTCSession', function(event) {
+                    console.log('New RTC Session:', {
+                        direction: event.session.direction,  // 'incoming' or 'outgoing'
+                        request: event.request,  // Full SIP request details
+                        originator: event.originator,
+                        session: event.session
+                    });
+                    session = event.session;
                     if (session.direction === 'incoming') {
                         showAnswerButton();
                         updateCallStatus('Incoming Call');
