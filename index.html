@@ -795,27 +795,36 @@
                     if (displayText && userAgent) {
                         try {
                             // Format the number properly for external calls
-                            let callNumber = displayText.trim();
+                            let phoneNumber = displayText.trim();
                             
                             // If it's a US number (10 digits), add '1' prefix
-                            if (/^\d{10}$/.test(callNumber)) {
-                                callNumber = '1' + callNumber;
+                            if (/^\d{10}$/.test(phoneNumber)) {
+                                phoneNumber = '1' + phoneNumber;
                             }
                             
-                            // Add proper SIP formatting
-                            if (!callNumber.startsWith('sip:')) {
-                                callNumber = `sip:${callNumber}@loupdb.com`;
-                            }
+                            // Use the correct SIP URI format and host for external calls
+                            const callNumber = `sip:${phoneNumber}@192.81.237.20`;
 
                             const options = {
-                                mediaConstraints: { audio: true, video: false },
+                                mediaConstraints: { 
+                                    audio: true, 
+                                    video: false 
+                                },
                                 pcConfig: {
                                     iceServers: [
                                         { urls: ['stun:stun.l.google.com:19302'] }
-                                    ]
+                                    ],
+                                    bundlePolicy: 'balanced',
+                                    rtcpMuxPolicy: 'require'
                                 },
+                                rtcOfferConstraints: {
+                                    offerToReceiveAudio: true,
+                                    offerToReceiveVideo: false
+                                },
+                                sessionTimerExpires: 90,
                                 extraHeaders: [
-                                    'X-Call-Type: external'  // Add header to indicate external call
+                                    'Allow: INVITE,ACK,CANCEL,BYE,UPDATE,OPTIONS',
+                                    'X-Transport: ws'
                                 ]
                             };
 
