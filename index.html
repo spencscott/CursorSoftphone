@@ -637,19 +637,23 @@
         document.getElementById('registerBtn').addEventListener('click', function() {
             const sipUri = document.getElementById('username').value;
             const password = document.getElementById('password').value;
-            const sipServer = document.getElementById('sipServer').value;
             
-            if (!sipUri || !password || !sipServer) {
+            if (!sipUri || !password) {
                 updateStatus('Please fill in all registration fields.', 'red');
                 return;
             }
 
             try {
-                const socket = new JsSIP.WebSocketInterface(sipServer);
+                // Use the correct outbound proxy
+                const socket = new JsSIP.WebSocketInterface('wss://alpha1.netsapiens.com:7443');
                 const configuration = {
                     sockets: [socket],
-                    uri: sipUri,
-                    password: password
+                    uri: `sip:${sipUri}@loupdb.com`,
+                    password: password,
+                    realm: 'loupdb.com',
+                    contact_uri: `sip:${sipUri}@loupdb.com`,
+                    registrar_server: 'sip:alpha1.netsapiens.com:5060',
+                    outbound_proxy_set: ['sip:alpha1.netsapiens.com:5060']
                 };
 
                 console.log('Attempting connection with config:', {
@@ -752,7 +756,6 @@
                     const displayText = document.getElementById('display-text').textContent;
                     if (displayText && userAgent) {
                         try {
-                            // Format the number properly for external calls
                             let phoneNumber = displayText.trim();
                             
                             // If it's a US number (10 digits), add '1' prefix
@@ -760,8 +763,8 @@
                                 phoneNumber = '1' + phoneNumber;
                             }
                             
-                            // Use the same SIP URI format as successful inbound calls
-                            const callNumber = `sip:${phoneNumber}@192.81.237.20:9002;transport=ws`;
+                            // Use the correct domain for outbound calls
+                            const callNumber = `sip:${phoneNumber}@loupdb.com`;
 
                             const options = {
                                 mediaConstraints: { 
@@ -773,19 +776,11 @@
                                         { urls: ['stun:stun.l.google.com:19302'] }
                                     ]
                                 },
-                                rtcpMuxPolicy: 'require',
-                                rtcOfferConstraints: {
-                                    offerToReceiveAudio: true,
-                                    offerToReceiveVideo: false
-                                },
                                 extraHeaders: [
                                     'Allow: INVITE,ACK,CANCEL,BYE,UPDATE,OPTIONS',
-                                    'Max-Forwards: 20',
-                                    'Contact: <sip:136.179.46.187:9002;transport=ws>',
+                                    'Max-Forwards: 70',
                                     'Content-Type: application/sdp'
-                                ],
-                                sessionTimers: false,
-                                mediaStream: stream // Use the existing audio stream
+                                ]
                             };
 
                             console.log('Initiating call to:', callNumber);
@@ -841,8 +836,8 @@
                 userAgent.start();
 
             } catch (error) {
-                updateStatus(`Error creating user agent: ${error.message}`, 'red');
-                console.error('Full error:', error);
+                console.error('Setup error:', error);
+                updateStatus('Registration failed: ' + error.message, 'red');
             }
         });
 
