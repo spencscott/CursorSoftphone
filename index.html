@@ -268,15 +268,6 @@
 
         .hidden {
             display: none !important;
-            position: absolute !important;
-            visibility: hidden !important;
-            pointer-events: none !important;
-            height: 0 !important;
-            width: 0 !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            opacity: 0 !important;
-            overflow: hidden !important;
         }
 
         #softphone-ui {
@@ -927,6 +918,7 @@
                         showHangupButton();
                         updateCallStatus('Connected');
                         startSpeechRecognition();
+                        showCaptionContainer();
                     }
                 });
 
