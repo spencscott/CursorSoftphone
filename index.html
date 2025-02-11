@@ -802,33 +802,43 @@
                                 phoneNumber = '1' + phoneNumber;
                             }
                             
-                            // Use the correct SIP URI format and host for external calls
+                            // Use the same SIP URI format as successful inbound calls
                             const callNumber = `sip:${phoneNumber}@192.81.237.20`;
 
                             const options = {
                                 mediaConstraints: { 
-                                    audio: true, 
+                                    audio: {
+                                        // Match the successful inbound audio codecs
+                                        codecs: ['PCMU', 'PCMA', 'G729'],
+                                        echoCancellation: true,
+                                        noiseSuppression: true
+                                    },
                                     video: false 
                                 },
                                 pcConfig: {
                                     iceServers: [
                                         { urls: ['stun:stun.l.google.com:19302'] }
-                                    ],
-                                    bundlePolicy: 'balanced',
-                                    rtcpMuxPolicy: 'require'
+                                    ]
                                 },
-                                rtcOfferConstraints: {
-                                    offerToReceiveAudio: true,
-                                    offerToReceiveVideo: false
+                                sessionTimers: {
+                                    enabled: true,
+                                    refreshMethod: 'UPDATE',
+                                    defaultExpires: 90
                                 },
-                                sessionTimerExpires: 90,
                                 extraHeaders: [
                                     'Allow: INVITE,ACK,CANCEL,BYE,UPDATE,OPTIONS',
-                                    'X-Transport: ws'
-                                ]
+                                    'Server: NetSapiens SiPBx',
+                                    'Content-Type: application/sdp'
+                                ],
+                                rtcOfferConstraints: {
+                                    // Match the successful inbound SDP parameters
+                                    offerToReceiveAudio: true,
+                                    offerToReceiveVideo: false,
+                                    voiceActivityDetection: false
+                                }
                             };
 
-                            console.log('Initiating call to:', callNumber);
+                            console.log('Initiating call to:', callNumber, 'with options:', options);
                             session = userAgent.call(callNumber, options);
                             setupSessionHandlers(session);
                             showHangupButton();
