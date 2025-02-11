@@ -499,6 +499,56 @@
         .hangup-button:hover {
             background: #d33828;
         }
+
+        .ringtone-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .ringtone-button {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 16px;
+            background: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .ringtone-button:hover {
+            background: #1557b0;
+        }
+
+        #selectedRingtoneName {
+            flex-grow: 1;
+            font-size: 14px;
+            color: #5f6368;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .ringtone-preview {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            background: #e8f0fe;
+            color: #1a73e8;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ringtone-preview:hover {
+            background: #d2e3fc;
+        }
     </style>
 </head>
 <body>
@@ -535,6 +585,20 @@
                     <div class="input-group">
                         <label for="speakerSelect">Speaker</label>
                         <select id="speakerSelect"></select>
+                    </div>
+                    <div class="input-group">
+                        <label for="ringtoneInput">Ringtone</label>
+                        <div class="ringtone-container">
+                            <input type="file" id="ringtoneInput" accept="audio/*" style="display: none;">
+                            <button id="selectRingtone" class="ringtone-button">
+                                <i class="material-icons">music_note</i>
+                                Select Ringtone
+                            </button>
+                            <span id="selectedRingtoneName">Default Ringtone</span>
+                            <button id="playRingtone" class="ringtone-preview">
+                                <i class="material-icons">play_arrow</i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -627,6 +691,8 @@
         let stream = null;
         let callTimer;
         let callStartTime;
+        let ringtoneAudio = new Audio();
+        let selectedRingtone = null;
 
         function updateStatus(status, color = 'black') {
             console.log('Status:', status);
@@ -835,6 +901,12 @@
                         showAnswerButton();
                         updateCallStatus('Incoming Call');
                         setupSessionHandlers(session);
+                        
+                        // Play ringtone
+                        if (ringtoneAudio.src) {
+                            ringtoneAudio.loop = true;
+                            ringtoneAudio.play().catch(e => console.error('Error playing ringtone:', e));
+                        }
                     }
                 });
 
@@ -1094,6 +1166,52 @@
             document.getElementById('answerBtnWrapper').classList.add('hidden');
             document.getElementById('hangupBtnWrapper').classList.remove('hidden');
         }
+
+        // Initialize ringtone from localStorage if available
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedRingtone = localStorage.getItem('ringtoneData');
+            if (savedRingtone) {
+                ringtoneAudio.src = savedRingtone;
+                const ringtoneName = localStorage.getItem('ringtoneName') || 'Custom Ringtone';
+                document.getElementById('selectedRingtoneName').textContent = ringtoneName;
+            }
+        });
+
+        document.getElementById('selectRingtone').addEventListener('click', () => {
+            document.getElementById('ringtoneInput').click();
+        });
+
+        document.getElementById('ringtoneInput').addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    ringtoneAudio.src = e.target.result;
+                    selectedRingtone = e.target.result;
+                    document.getElementById('selectedRingtoneName').textContent = file.name;
+                    
+                    // Save to localStorage
+                    localStorage.setItem('ringtoneData', e.target.result);
+                    localStorage.setItem('ringtoneName', file.name);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        document.getElementById('playRingtone').addEventListener('click', () => {
+            if (ringtoneAudio.paused) {
+                ringtoneAudio.play();
+                document.getElementById('playRingtone').querySelector('i').textContent = 'stop';
+            } else {
+                ringtoneAudio.pause();
+                ringtoneAudio.currentTime = 0;
+                document.getElementById('playRingtone').querySelector('i').textContent = 'play_arrow';
+            }
+        });
+
+        ringtoneAudio.addEventListener('ended', () => {
+            document.getElementById('playRingtone').querySelector('i').textContent = 'play_arrow';
+        });
     })();
     </script>
 </body>
