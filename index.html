@@ -842,8 +842,9 @@
                         updateCallStatus('Call Ended');
                         showCallButton();
                         stopRingtone();
-                        recognition.stop();
+                        stopCallTimer();
                         hideCaptionContainer();
+                        hideDialpadContainer();
                     });
 
                     session.on('rejected', function() {
@@ -1290,6 +1291,22 @@
 
         function hideCaptionContainer() {
             document.getElementById('captionContainer').classList.add('hidden');
+        }
+
+        function stopCallTimer() {
+            clearInterval(callTimer);
+            document.getElementById('call-timer').textContent = '00:00:00';
+        }
+
+        function hideDialpadContainer() {
+            const dialpadContainer = document.getElementById('dialpadContainer');
+            dialpadContainer.style.height = '0';
+            dialpadContainer.classList.add('hidden');
+            setTimeout(() => {
+                if (dialpadContainer.style.height === '0px') {
+                    dialpadContainer.classList.add('hidden');
+                }
+            }, 300);
         }
     })();
     </script>
