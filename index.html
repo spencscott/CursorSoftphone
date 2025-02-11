@@ -635,26 +635,21 @@
         }
 
         document.getElementById('registerBtn').addEventListener('click', function() {
-            const username = document.getElementById('username').value;
+            const sipUri = document.getElementById('username').value;
             const password = document.getElementById('password').value;
+            const sipServer = document.getElementById('sipServer').value;
             
-            if (!username || !password) {
+            if (!sipUri || !password || !sipServer) {
                 updateStatus('Please fill in all registration fields.', 'red');
                 return;
             }
 
             try {
-                const socket = new JsSIP.WebSocketInterface('wss://loupdb.com:9002');
+                const socket = new JsSIP.WebSocketInterface(sipServer);
                 const configuration = {
                     sockets: [socket],
-                    uri: `sip:1010wp@loupdb.com`,
-                    password: password,
-                    realm: 'loupdb.com',
-                    contact_uri: `sip:1010wp@loupdb.com`,
-                    authorization_user: '1010wp',
-                    display_name: '1010wp',
-                    register_expires: 300,
-                    session_timers: false
+                    uri: sipUri,
+                    password: password
                 };
 
                 console.log('Attempting connection with config:', {
@@ -663,38 +658,179 @@
                 });
 
                 userAgent = new JsSIP.UA(configuration);
-                setupUserAgentListeners();
+
+                userAgent.on('connected', function() {
+                    updateStatus('WebSocket Connected - Registering...', 'blue');
+                    console.log('UA connected!');
+                });
+
+                userAgent.on('disconnected', function() {
+                    updateStatus('WebSocket Disconnected', 'red');
+                    console.log('UA disconnected');
+                });
+
+                userAgent.on('registered', async function() {
+                    try {
+                        await navigator.mediaDevices.getUserMedia({ audio: true });
+                        await loadAudioDevices();
+                        
+                        // Create or get audio element
+                        let audioElement = document.getElementById('remoteAudio');
+                        if (!audioElement) {
+                            audioElement = document.createElement('audio');
+                            audioElement.id = 'remoteAudio';
+                            audioElement.autoplay = true;
+                            document.body.appendChild(audioElement);
+                        }
+                        
+                        // Set initial speaker if available
+                        if (typeof audioElement.sinkId !== 'undefined' && currentSpeakerId) {
+                            await audioElement.setSinkId(currentSpeakerId)
+                                .catch(error => console.error('Error setting initial audio output:', error));
+                        }
+                        
+                        console.log('Audio element ready:', {
+                            autoplay: audioElement.autoplay,
+                            sinkId: audioElement.sinkId,
+                            currentSpeakerId: currentSpeakerId
+                        });
+                        
+                        document.getElementById('status').textContent = 'Ready';
+                        document.getElementById('softphone-ui').style.display = 'block';
+                        document.getElementById('registration').style.display = 'none';
+                    } catch (error) {
+                        console.error('Setup error:', error);
+                        document.getElementById('mic-status').classList.add('error');
+                        document.getElementById('selected-mic-name').textContent = 'Audio setup failed';
+                    }
+                });
+
+                userAgent.on('registrationFailed', function(error) {
+                    document.getElementById('status').textContent = 'Registration failed: ' + error.cause;
+                });
+
+                function setupSessionHandlers(session) {
+                    session.on('accepted', function() {
+                        updateCallStatus('Connected');
+                        showHangupButton();
+                        
+                        // Set up audio when call is connected
+                        const remoteStream = session.connection.getRemoteStreams()[0];
+                        if (remoteStream) {
+                            const audioElement = document.getElementById('remoteAudio');
+                            if (audioElement) {
+                                console.log('Setting up remote audio stream');
+                                // Remove the old stream first
+                                audioElement.srcObject = null;
+                                // Set new stream and play
+                                audioElement.srcObject = remoteStream;
+                                // Add error handling for play()
+                                audioElement.play().catch(e => {
+                                    console.error('Error playing audio, retrying...', e);
+                                    // Try playing again after a short delay
+                                    setTimeout(() => {
+                                        audioElement.play().catch(e => console.error('Second play attempt failed:', e));
+                                    }, 100);
+                                });
+                            } else {
+                                console.error('Audio element not found');
+                            }
+                        } else {
+                            console.error('No remote stream available');
+                        }
+                    });
+
+                    // Add failure handling
+                    session.on('failed', function(event) {
+                        console.error('Call failed:', event);
+                        updateCallStatus('Failed');
+                        showCallButton();
+                        
+                        // Clean up audio
+                        const audioElement = document.getElementById('remoteAudio');
+                        if (audioElement) {
+                            audioElement.srcObject = null;
+                        }
+                    });
+
+                    // Add progress handling
+                    session.on('progress', function() {
+                        console.log('Call in progress...');
+                        updateCallStatus('Ringing');
+                    });
+                }
+
+                // Modify the call button handler
+                document.getElementById('callBtn').addEventListener('click', function() {
+                    const displayText = document.getElementById('display-text').textContent;
+                    if (displayText && userAgent) {
+                        try {
+                            // Format the number properly
+                            let callNumber = displayText.trim();
+                            if (!callNumber.startsWith('sip:')) {
+                                callNumber = `sip:${callNumber}@loupdb.com`;  // Add your SIP domain
+                            }
+
+                            const options = {
+                                mediaConstraints: { audio: true, video: false },
+                                pcConfig: {
+                                    iceServers: [
+                                        { urls: ['stun:stun.l.google.com:19302'] }
+                                    ]
+                                }
+                            };
+
+                            console.log('Initiating call to:', callNumber);
+                            session = userAgent.call(callNumber, options);
+                            setupSessionHandlers(session);
+                            showHangupButton();
+                            updateCallStatus('Calling');
+                        } catch (error) {
+                            console.error('Error initiating call:', error);
+                            updateCallStatus('Call Failed');
+                            showCallButton();
+                        }
+                    } else {
+                        console.warn('No number entered or user agent not ready');
+                    }
+                });
+
+                document.getElementById('answerBtn').addEventListener('click', function() {
+                    if (session) {
+                        session.answer({
+                            mediaConstraints: { audio: true, video: false }
+                        });
+                        setupSessionHandlers(session);
+                        showHangupButton();
+                        updateCallStatus('Connected');
+                    }
+                });
+
+                document.getElementById('hangupBtn').addEventListener('click', function() {
+                    if (session) {
+                        session.terminate();
+                        updateCallStatus('Ended');
+                        showCallButton();
+                    }
+                });
+
+                // Add incoming call handler
+                userAgent.on('newRTCSession', function(data) {
+                    session = data.session;
+                    if (session.direction === 'incoming') {
+                        showAnswerButton();
+                        updateCallStatus('Incoming Call');
+                        setupSessionHandlers(session);
+                    }
+                });
+
                 userAgent.start();
-                
+
             } catch (error) {
-                console.error('Setup error:', error);
-                updateStatus('Registration failed: ' + error.message, 'red');
+                updateStatus(`Error creating user agent: ${error.message}`, 'red');
+                console.error('Full error:', error);
             }
         });
-
-        function setupUserAgentListeners() {
-            userAgent.on('connected', function() {
-                console.log('UA connected!');
-                updateStatus('Connected to WebSocket');
-            });
-
-            userAgent.on('registered', function() {
-                console.log('UA registered!');
-                updateStatus('Registered', 'green');
-                document.getElementById('registerForm').classList.add('hidden');
-                document.getElementById('phoneContainer').classList.remove('hidden');
-            });
-
-            userAgent.on('registrationFailed', function(ev) {
-                console.error('Registration failed:', ev);
-                updateStatus('Registration failed: ' + ev.cause, 'red');
-            });
-
-            userAgent.on('disconnected', function() {
-                console.log('UA disconnected!');
-                updateStatus('WebSocket disconnected', 'red');
-            });
-        }
 
         const displayText = document.getElementById('display-text');
         document.querySelectorAll('.dial-digit').forEach(function(button) {
