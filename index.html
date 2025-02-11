@@ -674,19 +674,22 @@
                         await navigator.mediaDevices.getUserMedia({ audio: true });
                         await loadAudioDevices();
                         
-                        // Create audio element during registration
-                        let audioElement = document.createElement('audio');
-                        audioElement.id = 'remoteAudio';
-                        audioElement.autoplay = true;
+                        // Create or get audio element
+                        let audioElement = document.getElementById('remoteAudio');
+                        if (!audioElement) {
+                            audioElement = document.createElement('audio');
+                            audioElement.id = 'remoteAudio';
+                            audioElement.autoplay = true;
+                            document.body.appendChild(audioElement);
+                        }
                         
                         // Set initial speaker if available
                         if (typeof audioElement.sinkId !== 'undefined' && currentSpeakerId) {
                             await audioElement.setSinkId(currentSpeakerId)
                                 .catch(error => console.error('Error setting initial audio output:', error));
                         }
-                        document.body.appendChild(audioElement);
                         
-                        console.log('Audio element created:', {
+                        console.log('Audio element ready:', {
                             autoplay: audioElement.autoplay,
                             sinkId: audioElement.sinkId,
                             currentSpeakerId: currentSpeakerId
@@ -696,9 +699,9 @@
                         document.getElementById('softphone-ui').style.display = 'block';
                         document.getElementById('registration').style.display = 'none';
                     } catch (error) {
-                        console.error('Microphone access denied:', error);
+                        console.error('Setup error:', error);
                         document.getElementById('mic-status').classList.add('error');
-                        document.getElementById('selected-mic-name').textContent = 'Microphone access denied';
+                        document.getElementById('selected-mic-name').textContent = 'Audio setup failed';
                     }
                 });
 
@@ -717,8 +720,18 @@
                             const audioElement = document.getElementById('remoteAudio');
                             if (audioElement) {
                                 console.log('Setting up remote audio stream');
+                                // Remove the old stream first
+                                audioElement.srcObject = null;
+                                // Set new stream and play
                                 audioElement.srcObject = remoteStream;
-                                audioElement.play().catch(e => console.error('Error playing audio:', e));
+                                // Add error handling for play()
+                                audioElement.play().catch(e => {
+                                    console.error('Error playing audio, retrying...', e);
+                                    // Try playing again after a short delay
+                                    setTimeout(() => {
+                                        audioElement.play().catch(e => console.error('Second play attempt failed:', e));
+                                    }, 100);
+                                });
                             } else {
                                 console.error('Audio element not found');
                             }
@@ -727,18 +740,9 @@
                         }
                     });
 
-                    session.on('ended', function() {
-                        updateCallStatus('Ended');
-                        showCallButton();
-                        
-                        // Clean up audio
-                        const audioElement = document.getElementById('remoteAudio');
-                        if (audioElement) {
-                            audioElement.srcObject = null;
-                        }
-                    });
-
-                    session.on('failed', function() {
+                    // Add failure handling
+                    session.on('failed', function(event) {
+                        console.error('Call failed:', event);
                         updateCallStatus('Failed');
                         showCallButton();
                         
@@ -748,19 +752,46 @@
                             audioElement.srcObject = null;
                         }
                     });
+
+                    // Add progress handling
+                    session.on('progress', function() {
+                        console.log('Call in progress...');
+                        updateCallStatus('Ringing');
+                    });
                 }
 
-                // Add button event listeners
+                // Modify the call button handler
                 document.getElementById('callBtn').addEventListener('click', function() {
                     const displayText = document.getElementById('display-text').textContent;
                     if (displayText && userAgent) {
-                        const options = {
-                            mediaConstraints: { audio: true, video: false }
-                        };
-                        session = userAgent.call(displayText, options);
-                        setupSessionHandlers(session);
-                        showHangupButton();
-                        updateCallStatus('Calling');
+                        try {
+                            // Format the number properly
+                            let callNumber = displayText.trim();
+                            if (!callNumber.startsWith('sip:')) {
+                                callNumber = `sip:${callNumber}@loupdb.com`;  // Add your SIP domain
+                            }
+
+                            const options = {
+                                mediaConstraints: { audio: true, video: false },
+                                pcConfig: {
+                                    iceServers: [
+                                        { urls: ['stun:stun.l.google.com:19302'] }
+                                    ]
+                                }
+                            };
+
+                            console.log('Initiating call to:', callNumber);
+                            session = userAgent.call(callNumber, options);
+                            setupSessionHandlers(session);
+                            showHangupButton();
+                            updateCallStatus('Calling');
+                        } catch (error) {
+                            console.error('Error initiating call:', error);
+                            updateCallStatus('Call Failed');
+                            showCallButton();
+                        }
+                    } else {
+                        console.warn('No number entered or user agent not ready');
                     }
                 });
 
