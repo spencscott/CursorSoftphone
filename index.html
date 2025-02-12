@@ -167,6 +167,13 @@
             min-width: 0;
             overflow: hidden;
             text-overflow: ellipsis;
+            outline: none;
+            border-radius: 4px;
+        }
+
+        #display-text:focus {
+            background-color: #f1f3f4;
+            box-shadow: inset 0 0 0 2px rgba(26,115,232,0.2);
         }
 
         .clear-button {
@@ -570,59 +577,6 @@
         .icon-button:hover {
             color: #1a73e8;
         }
-
-        .call-history-entry {
-            padding: 12px;
-            border-bottom: 1px solid #dadce0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .call-history-entry:last-child {
-            border-bottom: none;
-        }
-
-        .call-details {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .call-number {
-            font-size: 16px;
-            font-weight: 500;
-            color: #202124;
-        }
-
-        .call-info {
-            font-size: 14px;
-            color: #5f6368;
-            display: flex;
-            gap: 8px;
-        }
-
-        .call-direction {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .call-direction i {
-            font-size: 18px;
-        }
-
-        .call-direction.outbound {
-            color: #1a73e8;
-        }
-
-        .call-direction.inbound {
-            color: #34a853;
-        }
-
-        .call-direction.missed {
-            color: #ea4335;
-        }
     </style>
 </head>
 <body>
@@ -640,9 +594,6 @@
         </div>
 
         <div class="settings-container">
-            <button id="callHistoryBtn" class="icon-button">
-                <i class="material-icons">history</i>
-            </button>
             <button id="settingsBtn" class="icon-button">
                 <i class="material-icons">settings</i>
             </button>
@@ -764,16 +715,6 @@
         </div>
     </div>
 
-    <div id="callHistoryModal" class="modal hidden">
-        <div class="modal-content">
-            <span class="close-btn">&times;</span>
-            <h2>Call History</h2>
-            <div id="callHistoryList">
-                <!-- Call history entries will be populated here -->
-            </div>
-        </div>
-    </div>
-
     <script>
     (function() {
         let userAgent;
@@ -786,7 +727,6 @@
         let callStartTime;
         let ringtoneAudio = new Audio();
         let selectedRingtone = null;
-        let callHistory = JSON.parse(localStorage.getItem('callHistory') || '[]');
 
         function updateStatus(status, color = 'black') {
             console.log('Status:', status);
@@ -922,7 +862,6 @@
                         stopCallTimer();
                         hideCaptionContainer();
                         hideDialpadContainer();
-                        saveCallDetails(session.remote_identity.uri.user, session.direction.toUpperCase(), document.getElementById('call-timer').textContent);
                     });
 
                     session.on('rejected', function() {
@@ -1387,68 +1326,58 @@
             }, 300);
         }
 
-        document.getElementById('callHistoryBtn').addEventListener('click', () => {
-            document.getElementById('callHistoryModal').style.display = 'flex';
-            updateCallHistoryDisplay();
-        });
-
-        document.querySelector('.close-btn').addEventListener('click', () => {
-            document.getElementById('callHistoryModal').style.display = 'none';
-        });
-
-        function saveCallToHistory(number, direction, duration) {
-            const call = {
-                number,
-                direction,
-                duration,
-                timestamp: new Date().toISOString(),
-            };
-            callHistory.unshift(call); // Add to beginning of array
-            if (callHistory.length > 50) callHistory.pop(); // Keep only last 50 calls
-            localStorage.setItem('callHistory', JSON.stringify(callHistory));
-        }
-
-        function formatDate(dateString) {
-            const date = new Date(dateString);
-            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
-        }
-
-        function updateCallHistoryDisplay() {
-            const historyList = document.getElementById('callHistoryList');
-            historyList.innerHTML = '';
+        // Add this after your existing event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            const displayText = document.getElementById('display-text');
             
-            if (callHistory.length === 0) {
-                historyList.innerHTML = '<div class="call-history-entry">No calls yet</div>';
-                return;
-            }
+            // Allow the display to be focusable
+            displayText.setAttribute('contenteditable', 'true');
+            displayText.setAttribute('spellcheck', 'false');
+            
+            // Handle keyboard input
+            displayText.addEventListener('keydown', function(e) {
+                // Prevent default behavior for most keys to handle them manually
+                if (e.key !== 'Tab') {
+                    e.preventDefault();
+                }
 
-            callHistory.forEach(call => {
-                const entry = document.createElement('div');
-                entry.className = 'call-history-entry';
-                entry.innerHTML = `
-                    <div class="call-details">
-                        <div class="call-number">${call.number}</div>
-                        <div class="call-info">
-                            <span>${formatDate(call.timestamp)}</span>
-                            <span>${call.duration || '0:00'}</span>
-                        </div>
-                    </div>
-                    <div class="call-direction ${call.direction.toLowerCase()}">
-                        <i class="material-icons">${
-                            call.direction === 'OUTBOUND' ? 'call_made' :
-                            call.direction === 'INBOUND' ? 'call_received' :
-                            'call_missed'
-                        }</i>
-                    </div>
-                `;
-                historyList.appendChild(entry);
+                // Handle numeric input (0-9, *, #)
+                const validKeys = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '#'];
+                if (validKeys.includes(e.key)) {
+                    const currentText = displayText.textContent;
+                    displayText.textContent = currentText + e.key;
+                }
+                
+                // Handle backspace
+                if (e.key === 'Backspace') {
+                    const currentText = displayText.textContent;
+                    displayText.textContent = currentText.slice(0, -1);
+                }
+                
+                // Handle Enter key to trigger call
+                if (e.key === 'Enter') {
+                    const callButton = document.querySelector('.call-button');
+                    if (callButton && !callButton.classList.contains('hidden')) {
+                        callButton.click();
+                    }
+                }
             });
-        }
 
-        function saveCallDetails(number, direction) {
-            const duration = document.getElementById('call-timer').textContent;
-            saveCallToHistory(number, direction, duration);
-        }
+            // Prevent pasting non-numeric content
+            displayText.addEventListener('paste', function(e) {
+                e.preventDefault();
+                const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+                const numericOnly = pastedText.replace(/[^0-9*#]/g, '');
+                if (numericOnly) {
+                    displayText.textContent += numericOnly;
+                }
+            });
+
+            // Keep focus in the display when typing
+            displayText.addEventListener('blur', function() {
+                displayText.focus();
+            });
+        });
     })();
     </script>
 </body>
