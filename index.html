@@ -626,13 +626,6 @@
                             </button>
                         </div>
                     </div>
-                    <div class="input-group">
-                        <button id="selectRecordingFolder" class="ringtone-button">
-                            <i class="material-icons">folder_open</i>
-                            Select Recording Folder
-                        </button>
-                        <span id="selectedRecordingFolderName">No folder selected</span>
-                    </div>
                 </div>
             </div>
         </div>
@@ -731,8 +724,6 @@
         let callStartTime;
         let ringtoneAudio = new Audio();
         let selectedRingtone = null;
-        let mediaRecorder;
-        let recordedChunks = [];
 
         function updateStatus(status, color = 'black') {
             console.log('Status:', status);
@@ -1330,63 +1321,6 @@
                     dialpadContainer.classList.add('hidden');
                 }
             }, 300);
-        }
-
-        document.getElementById('selectRecordingFolder').addEventListener('click', async () => {
-            // Request a directory handle
-            const dirHandle = await window.showDirectoryPicker();
-            localStorage.setItem('recordingFolder', dirHandle);
-            document.getElementById('selectedRecordingFolderName').textContent = dirHandle.name;
-        });
-
-        function startRecording(stream) {
-            console.log('Starting recording...');
-            mediaRecorder = new MediaRecorder(stream);
-
-            mediaRecorder.ondataavailable = function(e) {
-                console.log('Data available from MediaRecorder:', e.data.size + ' bytes');
-                if (e.data.size > 0) {
-                    recordedChunks.push(e.data);
-                }
-            };
-
-            mediaRecorder.onstop = async () => {
-                console.log('Stopping recording, preparing to save...');
-                const blob = new Blob(recordedChunks, {
-                    type: 'audio/webm'
-                });
-                recordedChunks = [];
-
-                // Attempt to save the recording
-                try {
-                    const folderHandle = localStorage.getItem('recordingFolder');
-                    if (folderHandle) {
-                        console.log('Saving recording to folder...');
-                        const fileHandle = await folderHandle.getFileHandle('recording.webm', { create: true });
-                        const writable = await fileHandle.createWritable();
-                        await writable.write(blob);
-                        await writable.close();
-                        console.log('Recording saved successfully.');
-                        alert('Recording saved.');
-                    } else {
-                        console.log('No folder handle available in localStorage.');
-                    }
-                } catch (error) {
-                    console.error('Failed to save recording:', error);
-                }
-            };
-
-            mediaRecorder.start();
-            console.log('MediaRecorder started.');
-        }
-
-        function stopRecording() {
-            if (mediaRecorder) {
-                console.log('Stopping the MediaRecorder...');
-                mediaRecorder.stop();
-            } else {
-                console.log('No MediaRecorder to stop.');
-            }
         }
     })();
     </script>
