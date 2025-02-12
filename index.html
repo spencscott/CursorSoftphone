@@ -300,50 +300,28 @@
 
         .modal {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            width: 300px;
+            padding: 20px;
             z-index: 1000;
+            display: none;
         }
 
         .modal-content {
-            background: white;
-            border-radius: 12px;
-            padding: 24px;
-            width: 90%;
-            max-width: 400px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .modal-header h2 {
-            margin: 0;
-            color: #1a73e8;
+            position: relative;
         }
 
         .close-btn {
-            background: none;
-            border: none;
-            padding: 8px;
+            position: absolute;
+            right: 10px;
+            top: 10px;
             cursor: pointer;
-            color: #5f6368;
-        }
-
-        .close-btn:hover {
-            color: #1a73e8;
-            background: none;
-            box-shadow: none;
+            font-size: 24px;
         }
 
         select {
@@ -576,6 +554,22 @@
         #settingsBtn:hover i {
             color: black;
         }
+
+        .settings-container {
+            position: relative;
+        }
+
+        .icon-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #5f6368;
+            font-size: 24px;
+        }
+
+        .icon-button:hover {
+            color: #1a73e8;
+        }
     </style>
 </head>
 <body>
@@ -592,9 +586,14 @@
             </div>
         </div>
 
-        <button id="settingsBtn" style="position: absolute; right: 24px; top: 24px; width: auto; padding: 8px;">
-            <i class="material-icons">settings</i>
-        </button>
+        <div class="settings-container">
+            <button id="callHistoryBtn" class="icon-button">
+                <i class="material-icons">history</i>
+            </button>
+            <button id="settingsBtn" class="icon-button">
+                <i class="material-icons">settings</i>
+            </button>
+        </div>
 
         <div id="settingsModal" class="modal" style="display: none;">
             <div class="modal-content">
@@ -708,6 +707,16 @@
                         Hang Up
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="callHistoryModal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>Call History</h2>
+            <div id="callHistoryList">
+                <!-- Call history entries will be populated here -->
             </div>
         </div>
     </div>
@@ -1322,6 +1331,34 @@
                 }
             }, 300);
         }
+
+        document.getElementById('callHistoryBtn').addEventListener('click', function() {
+            const modal = document.getElementById('callHistoryModal');
+            modal.style.display = 'block';
+        });
+
+        document.querySelector('.close-btn').addEventListener('click', function() {
+            document.getElementById('callHistoryModal').style.display = 'none';
+        });
+
+        // Example function to populate call history (you will need to fetch actual data)
+        function populateCallHistory() {
+            const history = [
+                { date: '2023-12-01', time: '14:00', duration: '5 mins', direction: 'Inbound' },
+                { date: '2023-12-01', time: '15:00', duration: '3 mins', direction: 'Outbound' }
+            ];
+
+            const list = document.getElementById('callHistoryList');
+            list.innerHTML = ''; // Clear existing entries
+
+            history.forEach(call => {
+                const entry = document.createElement('div');
+                entry.textContent = `${call.date} ${call.time} - ${call.duration} - ${call.direction}`;
+                list.appendChild(entry);
+            });
+        }
+
+        populateCallHistory(); // Call this function when you need to update the call history
     })();
     </script>
 </body>
