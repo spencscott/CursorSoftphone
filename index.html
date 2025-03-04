@@ -7,7 +7,6 @@
     <script src="jssip-3.10.0.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link rel="stylesheet" href="captions.css">
     <style>
         * {
             box-sizing: border-box;
@@ -734,6 +733,7 @@
         let callStartTime;
         let ringtoneAudio = new Audio();
         let selectedRingtone = null;
+        let captioningSystem = null;
 
         function updateStatus(status, color = 'black') {
             console.log('Status:', status);
@@ -817,9 +817,10 @@
                 });
 
                 function setupSessionHandlers(session) {
-                    session.on('accepted', function() {
+                    session.on('accepted', async function() {
                         updateCallStatus('Connected');
                         showHangupButton();
+                        startCallTimer();
                         
                         // Set up audio when call is connected
                         const remoteStream = session.connection.getRemoteStreams()[0];
@@ -827,23 +828,29 @@
                             const audioElement = document.getElementById('remoteAudio');
                             if (audioElement) {
                                 console.log('Setting up remote audio stream');
-                                // Remove the old stream first
-                                audioElement.srcObject = null;
-                                // Set new stream and play
                                 audioElement.srcObject = remoteStream;
-                                // Add error handling for play()
+                                
+                                // Initialize the captioning system
+                                if (!captioningSystem) {
+                                    captioningSystem = new ClosedCaptioning({
+                                        captionContainerId: 'captionContainer',
+                                        captionContainerClass: 'caption-container'
+                                    });
+                                }
+                                
+                                // Get the local stream (microphone)
+                                const localStream = session.connection.getLocalStreams()[0];
+                                
+                                // Initialize with both streams
+                                await captioningSystem.initialize(localStream, remoteStream);
+                                
                                 audioElement.play().catch(e => {
                                     console.error('Error playing audio, retrying...', e);
-                                    // Try playing again after a short delay
                                     setTimeout(() => {
                                         audioElement.play().catch(e => console.error('Second play attempt failed:', e));
                                     }, 100);
                                 });
-                            } else {
-                                console.error('Audio element not found');
                             }
-                        } else {
-                            console.error('No remote stream available');
                         }
                     });
 
