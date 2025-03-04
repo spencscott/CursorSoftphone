@@ -25,6 +25,7 @@ class ClosedCaptioning {
         this.audioContext = null;
         this.captionProcessor = null;
         this.speechRecognition = null;
+        this.remoteSpeechRecognition = null;
         this.captionHistory = [];
         this.currentSpeaker = null;
         this.localStream = null;
@@ -52,12 +53,10 @@ class ClosedCaptioning {
             // Initialize speech recognition for local audio
             this.initializeSpeechRecognition();
             
-            // If Audio Worklet is supported, set it up for remote audio
-            if (this.audioWorkletSupported) {
-                await this.setupAudioWorklet(remoteStream);
-                console.log('Audio Worklet initialized for captions');
-            } else {
-                console.warn('Audio Worklet not supported, falling back to basic captioning');
+            // Initialize remote audio transcription
+            if (remoteStream) {
+                await this.initializeRemoteTranscription(remoteStream);
+                console.log('Remote audio transcription initialized');
             }
             
             this.isActive = true;
@@ -85,7 +84,6 @@ class ClosedCaptioning {
             container.appendChild(captionsElement);
             
             // Add to the DOM - assuming there's a suitable parent element
-            // You may need to adjust this based on your app's structure
             const parentElement = document.querySelector('.container') || document.body;
             parentElement.appendChild(container);
         }
@@ -112,7 +110,7 @@ class ClosedCaptioning {
     }
 
     /**
-     * Initialize the Web Speech API for speech recognition
+     * Initialize the Web Speech API for speech recognition of local audio
      */
     initializeSpeechRecognition() {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -137,7 +135,7 @@ class ClosedCaptioning {
         };
         
         this.speechRecognition.onerror = (event) => {
-            console.error('Speech recognition error:', event.error);
+            console.error('Local speech recognition error:', event.error);
             if (event.error === 'no-speech') {
                 // This is a common error that doesn't need to stop the recognition
                 return;
@@ -156,6 +154,97 @@ class ClosedCaptioning {
         
         // Start the recognition
         this.speechRecognition.start();
+    }
+
+    /**
+     * Initialize transcription for remote audio
+     * @param {MediaStream} remoteStream - The remote audio stream
+     */
+    async initializeRemoteTranscription(remoteStream) {
+        if (!remoteStream) {
+            console.error('No remote stream provided for transcription');
+            return;
+        }
+
+        try {
+            // Create audio context
+            this.audioContext = new AudioContext();
+            
+            // Create source from remote stream
+            const source = this.audioContext.createMediaStreamSource(remoteStream);
+            
+            // Create a MediaStreamDestination to get a stream we can use
+            const destination = this.audioContext.createMediaStreamDestination();
+            
+            // Connect the remote audio to our destination
+            source.connect(destination);
+            
+            // Now we have a new MediaStream that contains the remote audio
+            const processableStream = destination.stream;
+            
+            // Set up a second speech recognition instance for remote audio
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                console.warn('Speech Recognition API not supported for remote audio');
+                return;
+            }
+            
+            this.remoteSpeechRecognition = new SpeechRecognition();
+            this.remoteSpeechRecognition.lang = 'en-US';
+            this.remoteSpeechRecognition.interimResults = true;
+            this.remoteSpeechRecognition.continuous = true;
+            
+            // Handle remote speech recognition results
+            this.remoteSpeechRecognition.onresult = (event) => {
+                const transcript = Array.from(event.results)
+                    .map(result => result[0])
+                    .map(result => result.transcript)
+                    .join(' ');
+                
+                // Update captions with remote speaker
+                this.updateCaption(transcript, 'remote');
+            };
+            
+            // Handle errors
+            this.remoteSpeechRecognition.onerror = (event) => {
+                console.error('Remote speech recognition error:', event.error);
+                // Try to restart if it's not a critical error
+                if (event.error !== 'audio-capture' && event.error !== 'not-allowed') {
+                    this.restartRemoteSpeechRecognition();
+                }
+            };
+            
+            // Restart if it ends unexpectedly
+            this.remoteSpeechRecognition.onend = () => {
+                if (this.isActive) {
+                    this.restartRemoteSpeechRecognition();
+                }
+            };
+            
+            // Create a hidden audio element to play the remote audio
+            // This is the key part - we need to actually play the audio
+            // for the speech recognition to pick it up
+            this.remoteAudioElement = document.createElement('audio');
+            this.remoteAudioElement.srcObject = processableStream;
+            this.remoteAudioElement.autoplay = true;
+            
+            // Hide the element but keep it in the DOM
+            this.remoteAudioElement.style.display = 'none';
+            document.body.appendChild(this.remoteAudioElement);
+            
+            // Start remote speech recognition
+            this.remoteSpeechRecognition.start();
+            
+            // Also set up audio worklet for activity detection if supported
+            if (this.audioWorkletSupported) {
+                await this.setupAudioWorklet(remoteStream);
+            }
+            
+            console.log('Remote audio transcription setup complete');
+        } catch (error) {
+            console.error('Error setting up remote audio transcription:', error);
+            throw error;
+        }
     }
 
     /**
@@ -182,6 +271,29 @@ class ClosedCaptioning {
     }
 
     /**
+     * Restart remote speech recognition if it stops
+     */
+    restartRemoteSpeechRecognition() {
+        if (this.isActive && this.remoteSpeechRecognition) {
+            try {
+                this.remoteSpeechRecognition.start();
+            } catch (error) {
+                console.error('Error restarting remote speech recognition:', error);
+                // If we can't restart immediately, try again after a delay
+                setTimeout(() => {
+                    if (this.isActive) {
+                        try {
+                            this.remoteSpeechRecognition.start();
+                        } catch (e) {
+                            console.error('Failed to restart remote speech recognition after delay:', e);
+                        }
+                    }
+                }, 1000);
+            }
+        }
+    }
+
+    /**
      * Set up Audio Worklet for processing remote audio
      * @param {MediaStream} remoteStream - The remote audio stream
      */
@@ -190,8 +302,10 @@ class ClosedCaptioning {
             throw new Error('No remote stream provided for Audio Worklet');
         }
         
-        // Create a new audio context
-        this.audioContext = new AudioContext();
+        // Create a new audio context if we don't have one
+        if (!this.audioContext) {
+            this.audioContext = new AudioContext();
+        }
         
         // Load the audio worklet module
         await this.audioContext.audioWorklet.addModule('caption-processor.js');
@@ -204,21 +318,13 @@ class ClosedCaptioning {
         
         // Set up message handling from the worklet
         this.captionProcessor.port.onmessage = (event) => {
-            if (event.data.command === 'processAudio') {
-                // In a real implementation, you would process this audio data
-                // For now, we'll just use it as a signal that remote audio is active
+            if (event.data.status === "speech_start") {
                 this.updateSpeakerStatus('remote');
-            } else if (event.data.caption) {
-                this.updateCaption(event.data.caption, 'remote');
             }
         };
         
         // Connect the audio processing chain
         source.connect(this.captionProcessor);
-        
-        // Connect to destination only if you want to hear the processed audio
-        // Usually not needed as the audio is already playing through the call
-        // this.captionProcessor.connect(this.audioContext.destination);
     }
 
     /**
@@ -317,6 +423,22 @@ class ClosedCaptioning {
             } catch (error) {
                 console.error('Error stopping speech recognition:', error);
             }
+        }
+        
+        // Stop remote speech recognition
+        if (this.remoteSpeechRecognition) {
+            try {
+                this.remoteSpeechRecognition.stop();
+            } catch (error) {
+                console.error('Error stopping remote speech recognition:', error);
+            }
+        }
+        
+        // Remove remote audio element
+        if (this.remoteAudioElement) {
+            this.remoteAudioElement.pause();
+            this.remoteAudioElement.remove();
+            this.remoteAudioElement = null;
         }
         
         // Close audio context
