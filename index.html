@@ -822,35 +822,48 @@
                         showHangupButton();
                         startCallTimer();
                         
-                        // Set up audio when call is connected
-                        const remoteStream = session.connection.getRemoteStreams()[0];
-                        if (remoteStream) {
-                            const audioElement = document.getElementById('remoteAudio');
-                            if (audioElement) {
-                                console.log('Setting up remote audio stream');
-                                audioElement.srcObject = remoteStream;
+                        try {
+                            // Get streams with error handling
+                            const remoteStream = session.connection.getRemoteStreams()[0];
+                            const localStream = session.connection.getLocalStreams()[0];
+                            
+                            console.log('Call accepted, streams available:', {
+                                remoteStream: !!remoteStream,
+                                localStream: !!localStream
+                            });
+                            
+                            if (remoteStream) {
+                                // Set up audio element
+                                const audioElement = document.getElementById('remoteAudio');
+                                if (audioElement) {
+                                    audioElement.srcObject = remoteStream;
+                                    audioElement.play().catch(e => console.error('Error playing audio:', e));
+                                }
                                 
-                                // Initialize the captioning system
+                                // Initialize captions
                                 if (!captioningSystem) {
                                     captioningSystem = new ClosedCaptioning({
                                         captionContainerId: 'captionContainer',
                                         captionContainerClass: 'caption-container'
                                     });
+                                    
+                                    // Manually show the container
+                                    document.getElementById('captionContainer').classList.remove('hidden');
                                 }
                                 
-                                // Get the local stream (microphone)
-                                const localStream = session.connection.getLocalStreams()[0];
-                                
-                                // Initialize with both streams
-                                await captioningSystem.initialize(localStream, remoteStream);
-                                
-                                audioElement.play().catch(e => {
-                                    console.error('Error playing audio, retrying...', e);
-                                    setTimeout(() => {
-                                        audioElement.play().catch(e => console.error('Second play attempt failed:', e));
-                                    }, 100);
-                                });
+                                // Initialize with streams
+                                if (localStream) {
+                                    await captioningSystem.initialize(localStream, remoteStream);
+                                    console.log('Captions initialized with both streams');
+                                } else {
+                                    console.warn('Local stream not available, captions may be limited');
+                                    await captioningSystem.initialize(null, remoteStream);
+                                }
+                            } else {
+                                console.error('No remote stream available for captions');
                             }
+                        } catch (error) {
+                            console.error('Error setting up captions:', error);
                         }
                     });
 
@@ -929,7 +942,10 @@
 
                             console.log('Initiating call to:', callNumber, 'with options:', options);
                             session = userAgent.call(callNumber, options);
+                            
+                            // Explicitly set up session handlers including captions
                             setupSessionHandlers(session);
+                            
                             showHangupButton();
                             updateCallStatus('Calling');
                         } catch (error) {
@@ -971,6 +987,8 @@
                     if (session.direction === 'incoming') {
                         showAnswerButton();
                         updateCallStatus('Incoming Call');
+                        
+                        // Explicitly set up session handlers including captions
                         setupSessionHandlers(session);
                         
                         // Play ringtone
