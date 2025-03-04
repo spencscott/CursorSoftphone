@@ -583,6 +583,307 @@
         .icon-button:hover {
             color: #1a73e8;
         }
+
+        /* Add this code to implement call recording functionality */
+
+        /* Global variables for recording */
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let isRecording = false;
+        let recordingStartTime = null;
+        let recordingTimer = null;
+
+        /* Function to start recording a call */
+        function startCallRecording() {
+            if (isRecording) {
+                console.log('Recording already in progress');
+                return;
+            }
+            
+            try {
+                /* Get the active call session */
+                const session = window.activeSession;
+                if (!session) {
+                    console.error('No active call to record');
+                    return;
+                }
+                
+                /* Get local and remote streams */
+                const localStream = session.connection.getLocalStreams()[0];
+                const remoteStream = session.connection.getRemoteStreams()[0];
+                
+                if (!localStream || !remoteStream) {
+                    console.error('Missing audio streams for recording');
+                    return;
+                }
+                
+                console.log('Starting call recording with streams:', {
+                    localTracks: localStream.getTracks().length,
+                    remoteTracks: remoteStream.getTracks().length
+                });
+                
+                /* Create a new audio context */
+                const audioContext = new AudioContext();
+                
+                /* Create sources for both streams */
+                const localSource = audioContext.createMediaStreamSource(localStream);
+                const remoteSource = audioContext.createMediaStreamSource(remoteStream);
+                
+                /* Create a destination to combine the streams */
+                const destination = audioContext.createMediaStreamDestination();
+                
+                /* Connect both sources to the destination */
+                localSource.connect(destination);
+                remoteSource.connect(destination);
+                
+                /* Get the combined stream */
+                const combinedStream = destination.stream;
+                
+                /* Create a MediaRecorder with the combined stream */
+                mediaRecorder = new MediaRecorder(combinedStream, {
+                    mimeType: 'audio/webm'
+                });
+                
+                /* Handle data available event */
+                mediaRecorder.ondataavailable = function(event) {
+                    if (event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
+                };
+                
+                /* Handle recording stop */
+                mediaRecorder.onstop = function() {
+                    /* Create a blob from the recorded chunks */
+                    const blob = new Blob(recordedChunks, {
+                        type: 'audio/webm'
+                    });
+                    
+                    /* Create a download link */
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    
+                    /* Format date for filename */
+                    const date = new Date();
+                    const formattedDate = `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}_${date.getHours().toString().padStart(2, '0')}-${date.getMinutes().toString().padStart(2, '0')}`;
+                    
+                    /* Get the phone number from the display */
+                    const phoneNumber = document.getElementById('display-text').textContent.trim() || 'unknown';
+                    
+                    a.href = url;
+                    a.download = `call_recording_${phoneNumber}_${formattedDate}.webm`;
+                    a.textContent = 'Download Recording';
+                    a.className = 'download-recording-btn';
+                    a.style.display = 'block';
+                    a.style.margin = '10px auto';
+                    a.style.textAlign = 'center';
+                    a.style.padding = '8px 16px';
+                    a.style.backgroundColor = '#1a73e8';
+                    a.style.color = 'white';
+                    a.style.borderRadius = '4px';
+                    a.style.textDecoration = 'none';
+                    
+                    /* Add the link to the page */
+                    const recordingContainer = document.getElementById('recordingContainer');
+                    if (recordingContainer) {
+                        recordingContainer.innerHTML = '';
+                        recordingContainer.appendChild(a);
+                        recordingContainer.style.display = 'block';
+                    } else {
+                        /* If container doesn't exist, create one */
+                        const container = document.createElement('div');
+                        container.id = 'recordingContainer';
+                        container.style.margin = '20px 0';
+                        container.appendChild(a);
+                        
+                        /* Find a good place to add it */
+                        const callControls = document.querySelector('.call-controls') || 
+                                            document.querySelector('.container');
+                        if (callControls) {
+                            callControls.appendChild(container);
+                        } else {
+                            document.body.appendChild(container);
+                        }
+                    }
+                    
+                    /* Reset recording state */
+                    recordedChunks = [];
+                    isRecording = false;
+                    
+                    /* Update UI */
+                    updateRecordingUI(false);
+                    
+                    console.log('Recording completed and available for download');
+                };
+                
+                /* Start recording */
+                mediaRecorder.start(1000); /* Capture in 1-second chunks */
+                isRecording = true;
+                recordingStartTime = Date.now();
+                
+                /* Update UI */
+                updateRecordingUI(true);
+                
+                /* Start recording timer */
+                startRecordingTimer();
+                
+                console.log('Call recording started');
+                
+            } catch (error) {
+                console.error('Error starting call recording:', error);
+                alert('Could not start recording: ' + error.message);
+            }
+        }
+
+        /* Function to stop recording */
+        function stopCallRecording() {
+            if (!isRecording || !mediaRecorder) {
+                console.log('No active recording to stop');
+                return;
+            }
+            
+            try {
+                /* Stop the media recorder */
+                mediaRecorder.stop();
+                
+                /* Stop the recording timer */
+                stopRecordingTimer();
+                
+                console.log('Call recording stopped');
+                
+            } catch (error) {
+                console.error('Error stopping call recording:', error);
+            }
+        }
+
+        /* Function to update the recording UI */
+        function updateRecordingUI(isRecording) {
+            /* Find or create recording button */
+            let recordButton = document.getElementById('recordCallBtn');
+            
+            if (!recordButton) {
+                /* Create recording button if it doesn't exist */
+                recordButton = document.createElement('button');
+                recordButton.id = 'recordCallBtn';
+                recordButton.className = 'control-button';
+                
+                /* Create icon */
+                const icon = document.createElement('i');
+                icon.className = 'material-icons';
+                icon.textContent = 'fiber_manual_record';
+                recordButton.appendChild(icon);
+                
+                /* Add click handler */
+                recordButton.addEventListener('click', function() {
+                    if (isRecording) {
+                        stopCallRecording();
+                    } else {
+                        startCallRecording();
+                    }
+                });
+                
+                /* Find a place to add the button */
+                const callControls = document.querySelector('.call-controls');
+                if (callControls) {
+                    callControls.appendChild(recordButton);
+                }
+            }
+            
+            /* Update button appearance */
+            if (isRecording) {
+                recordButton.classList.add('recording');
+                recordButton.querySelector('i').textContent = 'stop';
+                recordButton.title = 'Stop Recording';
+            } else {
+                recordButton.classList.remove('recording');
+                recordButton.querySelector('i').textContent = 'fiber_manual_record';
+                recordButton.title = 'Record Call';
+            }
+            
+            /* Find or create recording timer */
+            let timerElement = document.getElementById('recordingTimer');
+            if (!timerElement) {
+                timerElement = document.createElement('div');
+                timerElement.id = 'recordingTimer';
+                timerElement.className = 'recording-timer';
+                
+                /* Style the timer */
+                timerElement.style.textAlign = 'center';
+                timerElement.style.fontSize = '14px';
+                timerElement.style.margin = '5px 0';
+                timerElement.style.color = '#d32f2f';
+                timerElement.style.fontWeight = 'bold';
+                
+                /* Find a place to add the timer */
+                const container = document.querySelector('.call-status-container') || 
+                                  document.querySelector('.call-controls');
+                if (container) {
+                    container.appendChild(timerElement);
+                }
+            }
+            
+            /* Show/hide timer */
+            timerElement.style.display = isRecording ? 'block' : 'none';
+            if (isRecording) {
+                timerElement.textContent = '00:00';
+            }
+        }
+
+        /* Function to start the recording timer */
+        function startRecordingTimer() {
+            /* Clear any existing timer */
+            stopRecordingTimer();
+            
+            /* Start a new timer */
+            recordingTimer = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                
+                const timerElement = document.getElementById('recordingTimer');
+                if (timerElement) {
+                    timerElement.textContent = `Recording: ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                }
+            }, 1000);
+        }
+
+        /* Function to stop the recording timer */
+        function stopRecordingTimer() {
+            if (recordingTimer) {
+                clearInterval(recordingTimer);
+                recordingTimer = null;
+            }
+        }
+
+        /* Add this to your session.on('ended') handler */
+        session.on('ended', function() {
+            /* Stop recording if active */
+            if (isRecording) {
+                stopCallRecording();
+            }
+            
+            /* Other existing code... */
+        });
+
+        /* Add CSS for recording button */
+        const style = document.createElement('style');
+        style.textContent = `
+        .control-button.recording {
+            background-color: #d32f2f;
+            color: white;
+        }
+        .recording-timer {
+            animation: blink 1s infinite alternate;
+        }
+        @keyframes blink {
+            from { opacity: 1; }
+            to { opacity: 0.6; }
+        }
+        #recordingContainer {
+            margin: 20px 0;
+            text-align: center;
+        }
+        `;
+        document.head.appendChild(style);
     </style>
 </head>
 <body>
@@ -1443,7 +1744,8 @@
                 window.callTimerInterval = null;
             }
             
-            const timerElement = document.getElementById('callTimer');
+            // Reset the timer display
+            const timerElement = document.querySelector('.call-timer') || document.getElementById('callTimer');
             if (timerElement) {
                 timerElement.textContent = '00:00';
             }
@@ -1547,37 +1849,6 @@
 
         // Call this function after the call is established
         // You can also add a button to trigger this manually for testing
-
-        // Add this function if it doesn't exist
-        function startCallTimer() {
-            console.log('Starting call timer');
-            
-            // Clear any existing timer
-            if (window.callTimerInterval) {
-                clearInterval(window.callTimerInterval);
-            }
-            
-            // Initialize call start time
-            window.callStartTime = new Date();
-            
-            // Create timer element if it doesn't exist
-            let timerElement = document.getElementById('callTimer');
-            if (!timerElement) {
-                timerElement = document.createElement('div');
-                timerElement.id = 'callTimer';
-                timerElement.className = 'call-timer';
-                document.querySelector('.call-controls') || document.body.appendChild(timerElement);
-            }
-            
-            // Update timer every second
-            window.callTimerInterval = setInterval(() => {
-                const now = new Date();
-                const diff = now - window.callStartTime;
-                const minutes = Math.floor(diff / 60000);
-                const seconds = Math.floor((diff % 60000) / 1000);
-                timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            }, 1000);
-        }
 
         // Add this function to test audio
         function testAudio() {
