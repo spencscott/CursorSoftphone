@@ -1,0 +1,84 @@
+/* Closed Captioning Styles */
+
+.caption-container {
+    background-color: #f8f9fa;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    width: 100%;
+    padding: 12px;
+    color: #333;
+    font-size: 16px;
+    display: flex;
+    flex-direction: column;
+    height: 120px;
+    overflow-y: auto;
+    transition: height 0.3s ease;
+}
+
+.caption-container.hidden {
+    height: 0;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+}
+
+.captions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+
+.caption-entry {
+    display: flex;
+    margin-bottom: 4px;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.speaker-label {
+    font-weight: 500;
+    margin-right: 4px;
+}
+
+.caption-text {
+    flex: 1;
+}
+
+.caption-entry.local .speaker-label {
+    color: #1a73e8;
+}
+
+.caption-entry.remote .speaker-label {
+    color: #34a853;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Caption controls */
+.caption-controls {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.caption-control-button {
+    background: none;
+    border: none;
+    color: #5f6368;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+}
+
+.caption-control-button:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    color: #1a73e8;
+} 
