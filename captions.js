@@ -167,26 +167,9 @@ class ClosedCaptioning {
         }
 
         try {
-            console.log('Setting up remote transcription with stream tracks:', remoteStream.getTracks().length);
+            console.log('Setting up remote transcription - simplified version');
             
-            // IMPORTANT: Create a clone of the stream to avoid interfering with the original
-            // This ensures the original stream remains untouched for audio playback
-            const clonedTracks = remoteStream.getAudioTracks().map(track => track.clone());
-            const clonedStream = new MediaStream(clonedTracks);
-            
-            // Create audio context for the cloned stream
-            this.audioContext = new AudioContext();
-            
-            // Create source from cloned stream
-            const source = this.audioContext.createMediaStreamSource(clonedStream);
-            
-            // Create a MediaStreamDestination
-            const destination = this.audioContext.createMediaStreamDestination();
-            
-            // Connect the cloned audio to our destination
-            source.connect(destination);
-            
-            // Set up a second speech recognition instance for remote audio
+            // Set up speech recognition for remote audio
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechRecognition) {
                 console.warn('Speech Recognition API not supported for remote audio');
@@ -212,28 +195,7 @@ class ClosedCaptioning {
             // Handle errors
             this.remoteSpeechRecognition.onerror = (event) => {
                 console.error('Remote speech recognition error:', event.error);
-                // Try to restart if it's not a critical error
-                if (event.error !== 'audio-capture' && event.error !== 'not-allowed') {
-                    this.restartRemoteSpeechRecognition();
-                }
             };
-            
-            // Restart if it ends unexpectedly
-            this.remoteSpeechRecognition.onend = () => {
-                if (this.isActive) {
-                    this.restartRemoteSpeechRecognition();
-                }
-            };
-            
-            // Create a hidden audio element to play the processed stream for recognition
-            this.remoteAudioElement = document.createElement('audio');
-            this.remoteAudioElement.srcObject = destination.stream;
-            this.remoteAudioElement.autoplay = true;
-            this.remoteAudioElement.volume = 0.01; // Very low volume to avoid feedback
-            
-            // Hide the element but keep it in the DOM
-            this.remoteAudioElement.style.display = 'none';
-            document.body.appendChild(this.remoteAudioElement);
             
             // Start remote speech recognition
             this.remoteSpeechRecognition.start();
@@ -241,7 +203,6 @@ class ClosedCaptioning {
             console.log('Remote audio transcription setup complete');
         } catch (error) {
             console.error('Error setting up remote audio transcription:', error);
-            throw error;
         }
     }
 
@@ -406,20 +367,6 @@ class ClosedCaptioning {
             } catch (error) {
                 console.error('Error stopping remote speech recognition:', error);
             }
-        }
-        
-        // Remove remote audio element
-        if (this.remoteAudioElement) {
-            this.remoteAudioElement.pause();
-            this.remoteAudioElement.remove();
-            this.remoteAudioElement = null;
-        }
-        
-        // Close audio context
-        if (this.audioContext) {
-            this.audioContext.close().catch(error => {
-                console.error('Error closing audio context:', error);
-            });
         }
         
         // Hide the caption container
