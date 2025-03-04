@@ -176,7 +176,10 @@ class ClosedCaptioning {
             // Create a MediaStreamDestination to get a stream we can use
             const destination = this.audioContext.createMediaStreamDestination();
             
-            // Connect the remote audio to our destination
+            // IMPORTANT: Don't disconnect the original audio path
+            // We're just creating a parallel path for speech recognition
+            
+            // Connect the remote audio to our destination for processing
             source.connect(destination);
             
             // Now we have a new MediaStream that contains the remote audio
@@ -221,12 +224,12 @@ class ClosedCaptioning {
                 }
             };
             
-            // Create a hidden audio element to play the remote audio
-            // This is the key part - we need to actually play the audio
-            // for the speech recognition to pick it up
+            // Create a hidden audio element to play the remote audio for recognition
+            // This is separate from the main audio playback
             this.remoteAudioElement = document.createElement('audio');
             this.remoteAudioElement.srcObject = processableStream;
             this.remoteAudioElement.autoplay = true;
+            this.remoteAudioElement.volume = 0.01; // Very low volume to avoid feedback
             
             // Hide the element but keep it in the DOM
             this.remoteAudioElement.style.display = 'none';
@@ -325,6 +328,9 @@ class ClosedCaptioning {
         
         // Connect the audio processing chain
         source.connect(this.captionProcessor);
+        
+        // IMPORTANT: Don't connect to audioContext.destination
+        // This would override the normal audio playback path
     }
 
     /**
