@@ -834,34 +834,68 @@
                             });
                             
                             if (remoteStream) {
-                                // IMPORTANT: Set up audio element FIRST before initializing captions
+                                // CRITICAL: Set up audio playback first and ensure it works
                                 const audioElement = document.getElementById('remoteAudio');
                                 if (audioElement) {
                                     console.log('Setting up remote audio stream for playback');
+                                    
+                                    // Remove any existing srcObject
+                                    if (audioElement.srcObject) {
+                                        audioElement.srcObject = null;
+                                    }
+                                    
+                                    // Set the new stream
                                     audioElement.srcObject = remoteStream;
-                                    audioElement.play().catch(e => {
-                                        console.error('Error playing audio:', e);
-                                        // Try again after a short delay
-                                        setTimeout(() => {
-                                            audioElement.play().catch(e => console.error('Second play attempt failed:', e));
-                                        }, 100);
+                                    
+                                    // Ensure audio is unmuted and volume is up
+                                    audioElement.muted = false;
+                                    audioElement.volume = 1.0;
+                                    
+                                    // Play with error handling and retry
+                                    const playPromise = audioElement.play();
+                                    if (playPromise !== undefined) {
+                                        playPromise.catch(e => {
+                                            console.error('Error playing audio:', e);
+                                            // Try again after a short delay
+                                            setTimeout(() => {
+                                                audioElement.play().catch(e => {
+                                                    console.error('Second play attempt failed:', e);
+                                                    // Last resort: create a new audio element
+                                                    const newAudio = new Audio();
+                                                    newAudio.srcObject = remoteStream;
+                                                    newAudio.play();
+                                                });
+                                            }, 100);
+                                        });
+                                    }
+                                    
+                                    // Add a debug message to check if audio is playing
+                                    console.log('Audio element state:', {
+                                        muted: audioElement.muted,
+                                        volume: audioElement.volume,
+                                        paused: audioElement.paused,
+                                        ended: audioElement.ended,
+                                        readyState: audioElement.readyState
                                     });
                                 }
                                 
-                                // Now initialize captions AFTER audio is set up
-                                document.getElementById('captionContainer').classList.remove('hidden');
-                                
-                                if (!captioningSystem) {
-                                    captioningSystem = new ClosedCaptioning({
-                                        captionContainerId: 'captionContainer',
-                                        captionContainerClass: 'caption-container'
-                                    });
-                                }
-                                
-                                if (localStream) {
-                                    await captioningSystem.initialize(localStream, remoteStream);
-                                    console.log('Captions initialized with both streams');
-                                }
+                                // Now initialize captions AFTER audio is confirmed working
+                                // Wait a moment to ensure audio setup is complete
+                                setTimeout(async () => {
+                                    document.getElementById('captionContainer').classList.remove('hidden');
+                                    
+                                    if (!captioningSystem) {
+                                        captioningSystem = new ClosedCaptioning({
+                                            captionContainerId: 'captionContainer',
+                                            captionContainerClass: 'caption-container'
+                                        });
+                                    }
+                                    
+                                    if (localStream) {
+                                        await captioningSystem.initialize(localStream, remoteStream);
+                                        console.log('Captions initialized with both streams');
+                                    }
+                                }, 500);
                             }
                         } catch (error) {
                             console.error('Error setting up call:', error);
@@ -1482,6 +1516,41 @@
                 displayText.focus();
             });
         });
+
+        // Add this function to test audio playback
+        function testAudioPlayback() {
+            const audioElement = document.getElementById('remoteAudio');
+            if (audioElement && audioElement.srcObject) {
+                console.log('Testing audio playback...');
+                
+                // Log current audio state
+                console.log('Audio element state:', {
+                    muted: audioElement.muted,
+                    volume: audioElement.volume,
+                    paused: audioElement.paused,
+                    ended: audioElement.ended,
+                    readyState: audioElement.readyState,
+                    hasAudioTracks: audioElement.srcObject.getAudioTracks().length > 0,
+                    audioTrackEnabled: audioElement.srcObject.getAudioTracks()[0]?.enabled
+                });
+                
+                // Ensure it's not muted and volume is up
+                audioElement.muted = false;
+                audioElement.volume = 1.0;
+                
+                // Try to play
+                audioElement.play().then(() => {
+                    console.log('Audio playback started successfully');
+                }).catch(e => {
+                    console.error('Audio playback test failed:', e);
+                });
+            } else {
+                console.error('No audio element or no stream attached');
+            }
+        }
+
+        // Call this function after the call is established
+        // You can also add a button to trigger this manually for testing
     })();
     </script>
 </body>
