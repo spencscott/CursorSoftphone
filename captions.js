@@ -167,23 +167,24 @@ class ClosedCaptioning {
         }
 
         try {
-            // Create audio context
+            console.log('Setting up remote transcription with stream tracks:', remoteStream.getTracks().length);
+            
+            // IMPORTANT: Create a clone of the stream to avoid interfering with the original
+            // This ensures the original stream remains untouched for audio playback
+            const clonedTracks = remoteStream.getAudioTracks().map(track => track.clone());
+            const clonedStream = new MediaStream(clonedTracks);
+            
+            // Create audio context for the cloned stream
             this.audioContext = new AudioContext();
             
-            // Create source from remote stream
-            const source = this.audioContext.createMediaStreamSource(remoteStream);
+            // Create source from cloned stream
+            const source = this.audioContext.createMediaStreamSource(clonedStream);
             
-            // Create a MediaStreamDestination to get a stream we can use
+            // Create a MediaStreamDestination
             const destination = this.audioContext.createMediaStreamDestination();
             
-            // IMPORTANT: Don't disconnect the original audio path
-            // We're just creating a parallel path for speech recognition
-            
-            // Connect the remote audio to our destination for processing
+            // Connect the cloned audio to our destination
             source.connect(destination);
-            
-            // Now we have a new MediaStream that contains the remote audio
-            const processableStream = destination.stream;
             
             // Set up a second speech recognition instance for remote audio
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -224,10 +225,9 @@ class ClosedCaptioning {
                 }
             };
             
-            // Create a hidden audio element to play the remote audio for recognition
-            // This is separate from the main audio playback
+            // Create a hidden audio element to play the processed stream for recognition
             this.remoteAudioElement = document.createElement('audio');
-            this.remoteAudioElement.srcObject = processableStream;
+            this.remoteAudioElement.srcObject = destination.stream;
             this.remoteAudioElement.autoplay = true;
             this.remoteAudioElement.volume = 0.01; // Very low volume to avoid feedback
             
@@ -237,11 +237,6 @@ class ClosedCaptioning {
             
             // Start remote speech recognition
             this.remoteSpeechRecognition.start();
-            
-            // Also set up audio worklet for activity detection if supported
-            if (this.audioWorkletSupported) {
-                await this.setupAudioWorklet(remoteStream);
-            }
             
             console.log('Remote audio transcription setup complete');
         } catch (error) {
@@ -301,36 +296,9 @@ class ClosedCaptioning {
      * @param {MediaStream} remoteStream - The remote audio stream
      */
     async setupAudioWorklet(remoteStream) {
-        if (!remoteStream) {
-            throw new Error('No remote stream provided for Audio Worklet');
-        }
-        
-        // Create a new audio context if we don't have one
-        if (!this.audioContext) {
-            this.audioContext = new AudioContext();
-        }
-        
-        // Load the audio worklet module
-        await this.audioContext.audioWorklet.addModule('caption-processor.js');
-        
-        // Create a media stream source from the remote stream
-        const source = this.audioContext.createMediaStreamSource(remoteStream);
-        
-        // Create the audio worklet node
-        this.captionProcessor = new AudioWorkletNode(this.audioContext, 'caption-processor');
-        
-        // Set up message handling from the worklet
-        this.captionProcessor.port.onmessage = (event) => {
-            if (event.data.status === "speech_start") {
-                this.updateSpeakerStatus('remote');
-            }
-        };
-        
-        // Connect the audio processing chain
-        source.connect(this.captionProcessor);
-        
-        // IMPORTANT: Don't connect to audioContext.destination
-        // This would override the normal audio playback path
+        // We'll skip this for now to simplify troubleshooting
+        console.log('Skipping Audio Worklet setup to avoid audio interference');
+        return;
     }
 
     /**
