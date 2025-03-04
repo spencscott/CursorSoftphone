@@ -817,14 +817,16 @@
                 });
 
                 function setupSessionHandlers(session) {
-                    session.on('accepted', async function() {
+                    session.on('accepted', function() {
                         console.log('Call accepted');
                         updateCallStatus('Connected');
                         showHangupButton();
-                        startCallTimer();
                         
                         try {
-                            // Get streams with error handling
+                            // Start the call timer
+                            startCallTimer();
+                            
+                            // Get the remote stream
                             const remoteStream = session.connection.getRemoteStreams()[0];
                             const localStream = session.connection.getLocalStreams()[0];
                             
@@ -834,71 +836,57 @@
                             });
                             
                             if (remoteStream) {
-                                // CRITICAL: Set up audio playback first and ensure it works
+                                // Set up audio playback - keep this simple
                                 const audioElement = document.getElementById('remoteAudio');
                                 if (audioElement) {
                                     console.log('Setting up remote audio stream for playback');
                                     
-                                    // Remove any existing srcObject
-                                    if (audioElement.srcObject) {
-                                        audioElement.srcObject = null;
-                                    }
-                                    
-                                    // Set the new stream
+                                    // Basic audio setup
                                     audioElement.srcObject = remoteStream;
-                                    
-                                    // Ensure audio is unmuted and volume is up
                                     audioElement.muted = false;
                                     audioElement.volume = 1.0;
                                     
-                                    // Play with error handling and retry
-                                    const playPromise = audioElement.play();
-                                    if (playPromise !== undefined) {
-                                        playPromise.catch(e => {
-                                            console.error('Error playing audio:', e);
-                                            // Try again after a short delay
-                                            setTimeout(() => {
-                                                audioElement.play().catch(e => {
-                                                    console.error('Second play attempt failed:', e);
-                                                    // Last resort: create a new audio element
-                                                    const newAudio = new Audio();
-                                                    newAudio.srcObject = remoteStream;
-                                                    newAudio.play();
-                                                });
-                                            }, 100);
-                                        });
-                                    }
+                                    // Play with simple error handling
+                                    audioElement.play().catch(e => {
+                                        console.error('Error playing audio:', e);
+                                    });
                                     
-                                    // Add a debug message to check if audio is playing
-                                    console.log('Audio element state:', {
+                                    console.log('Audio element configured:', {
                                         muted: audioElement.muted,
-                                        volume: audioElement.volume,
-                                        paused: audioElement.paused,
-                                        ended: audioElement.ended,
-                                        readyState: audioElement.readyState
+                                        volume: audioElement.volume
                                     });
                                 }
                                 
-                                // Now initialize captions AFTER audio is confirmed working
-                                // Wait a moment to ensure audio setup is complete
-                                setTimeout(async () => {
-                                    document.getElementById('captionContainer').classList.remove('hidden');
-                                    
-                                    if (!captioningSystem) {
-                                        captioningSystem = new ClosedCaptioning({
-                                            captionContainerId: 'captionContainer',
-                                            captionContainerClass: 'caption-container'
-                                        });
+                                // Initialize captions after a short delay
+                                setTimeout(() => {
+                                    // Show caption container
+                                    const captionContainer = document.getElementById('captionContainer');
+                                    if (captionContainer) {
+                                        captionContainer.classList.remove('hidden');
                                     }
                                     
-                                    if (localStream) {
-                                        await captioningSystem.initialize(localStream, remoteStream);
-                                        console.log('Captions initialized with both streams');
+                                    // Initialize captioning system
+                                    if (typeof ClosedCaptioning !== 'undefined') {
+                                        if (!captioningSystem) {
+                                            captioningSystem = new ClosedCaptioning({
+                                                captionContainerId: 'captionContainer',
+                                                captionContainerClass: 'caption-container'
+                                            });
+                                        }
+                                        
+                                        // Initialize with streams
+                                        captioningSystem.initialize(localStream, remoteStream)
+                                            .then(() => console.log('Captions initialized'))
+                                            .catch(err => console.error('Error initializing captions:', err));
+                                    } else {
+                                        console.error('ClosedCaptioning class not available');
                                     }
-                                }, 500);
+                                }, 1000);
+                            } else {
+                                console.error('No remote stream available');
                             }
                         } catch (error) {
-                            console.error('Error setting up call:', error);
+                            console.error('Error in call accepted handler:', error);
                         }
                     });
 
@@ -1449,8 +1437,16 @@
         }
 
         function stopCallTimer() {
-            clearInterval(callTimer);
-            document.getElementById('call-timer').textContent = '00:00:00';
+            console.log('Stopping call timer');
+            if (window.callTimerInterval) {
+                clearInterval(window.callTimerInterval);
+                window.callTimerInterval = null;
+            }
+            
+            const timerElement = document.getElementById('callTimer');
+            if (timerElement) {
+                timerElement.textContent = '00:00';
+            }
         }
 
         function hideDialpadContainer() {
@@ -1551,6 +1547,63 @@
 
         // Call this function after the call is established
         // You can also add a button to trigger this manually for testing
+
+        // Add this function if it doesn't exist
+        function startCallTimer() {
+            console.log('Starting call timer');
+            
+            // Clear any existing timer
+            if (window.callTimerInterval) {
+                clearInterval(window.callTimerInterval);
+            }
+            
+            // Initialize call start time
+            window.callStartTime = new Date();
+            
+            // Create timer element if it doesn't exist
+            let timerElement = document.getElementById('callTimer');
+            if (!timerElement) {
+                timerElement = document.createElement('div');
+                timerElement.id = 'callTimer';
+                timerElement.className = 'call-timer';
+                document.querySelector('.call-controls') || document.body.appendChild(timerElement);
+            }
+            
+            // Update timer every second
+            window.callTimerInterval = setInterval(() => {
+                const now = new Date();
+                const diff = now - window.callStartTime;
+                const minutes = Math.floor(diff / 60000);
+                const seconds = Math.floor((diff % 60000) / 1000);
+                timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+
+        // Add this function to test audio
+        function testAudio() {
+            // Create a simple audio context
+            const audioContext = new AudioContext();
+            
+            // Create an oscillator
+            const oscillator = audioContext.createOscillator();
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // 440 Hz - A4
+            
+            // Connect to output
+            oscillator.connect(audioContext.destination);
+            
+            // Start and stop after 1 second
+            oscillator.start();
+            setTimeout(() => {
+                oscillator.stop();
+                console.log('Audio test complete - you should have heard a beep');
+            }, 1000);
+            
+            console.log('Testing audio output - you should hear a beep');
+        }
+
+        // Call this function to test audio
+        // testAudio();
     })();
     </script>
 </body>
