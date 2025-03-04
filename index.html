@@ -593,8 +593,83 @@
         let recordingStartTime = null;
         let recordingTimer = null;
 
+        /* Function to create and add the recording button to the UI */
+        function createRecordingButton() {
+            console.log('Creating recording button');
+            
+            /* Check if button already exists */
+            if (document.getElementById('recordCallBtn')) {
+                console.log('Recording button already exists');
+                return;
+            }
+            
+            /* Create recording button */
+            const recordButton = document.createElement('button');
+            recordButton.id = 'recordCallBtn';
+            recordButton.className = 'control-button';
+            recordButton.style.backgroundColor = '#f8f9fa';
+            recordButton.style.color = '#d32f2f';
+            recordButton.style.border = 'none';
+            recordButton.style.borderRadius = '50%';
+            recordButton.style.width = '48px';
+            recordButton.style.height = '48px';
+            recordButton.style.margin = '0 8px';
+            recordButton.style.cursor = 'pointer';
+            recordButton.style.display = 'flex';
+            recordButton.style.alignItems = 'center';
+            recordButton.style.justifyContent = 'center';
+            recordButton.title = 'Record Call';
+            
+            /* Create icon */
+            const icon = document.createElement('i');
+            icon.className = 'material-icons';
+            icon.textContent = 'fiber_manual_record';
+            recordButton.appendChild(icon);
+            
+            /* Add click handler */
+            recordButton.addEventListener('click', function() {
+                if (isRecording) {
+                    stopCallRecording();
+                } else {
+                    startCallRecording();
+                }
+            });
+            
+            /* Find a place to add the button */
+            const hangupButton = document.querySelector('.hangup-button');
+            if (hangupButton) {
+                /* Insert before the hangup button */
+                const parentElement = hangupButton.parentElement;
+                if (parentElement) {
+                    parentElement.insertBefore(recordButton, hangupButton);
+                    console.log('Recording button added next to hangup button');
+                }
+            } else {
+                /* Try to find the call controls */
+                const callControls = document.querySelector('.call-controls') || 
+                                    document.querySelector('.button-container');
+                if (callControls) {
+                    callControls.appendChild(recordButton);
+                    console.log('Recording button added to call controls');
+                } else {
+                    /* Last resort - add to the container */
+                    const container = document.querySelector('.container');
+                    if (container) {
+                        container.appendChild(recordButton);
+                        console.log('Recording button added to main container');
+                    } else {
+                        console.error('Could not find a suitable place to add recording button');
+                    }
+                }
+            }
+            
+            console.log('Recording button created');
+        }
+
         /* Function to start recording a call */
         function startCallRecording() {
+            console.log('Attempting to start call recording');
+            
             if (isRecording) {
                 console.log('Recording already in progress');
                 return;
@@ -605,6 +680,7 @@
                 const session = window.activeSession;
                 if (!session) {
                     console.error('No active call to record');
+                    alert('No active call to record');
                     return;
                 }
                 
@@ -614,6 +690,7 @@
                 
                 if (!localStream || !remoteStream) {
                     console.error('Missing audio streams for recording');
+                    alert('Cannot record: Missing audio streams');
                     return;
                 }
                 
@@ -648,15 +725,20 @@
                 mediaRecorder.ondataavailable = function(event) {
                     if (event.data.size > 0) {
                         recordedChunks.push(event.data);
+                        console.log(`Recorded chunk: ${event.data.size} bytes`);
                     }
                 };
                 
                 /* Handle recording stop */
                 mediaRecorder.onstop = function() {
+                    console.log('MediaRecorder stopped, processing recording...');
+                    
                     /* Create a blob from the recorded chunks */
                     const blob = new Blob(recordedChunks, {
                         type: 'audio/webm'
                     });
+                    
+                    console.log(`Recording complete: ${blob.size} bytes`);
                     
                     /* Create a download link */
                     const url = URL.createObjectURL(blob);
@@ -667,7 +749,7 @@
                     const formattedDate = `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}_${date.getHours().toString().padStart(2, '0')}-${date.getMinutes().toString().padStart(2, '0')}`;
                     
                     /* Get the phone number from the display */
-                    const phoneNumber = document.getElementById('display-text').textContent.trim() || 'unknown';
+                    const phoneNumber = document.getElementById('display-text')?.textContent.trim() || 'unknown';
                     
                     a.href = url;
                     a.download = `call_recording_${phoneNumber}_${formattedDate}.webm`;
@@ -682,28 +764,28 @@
                     a.style.borderRadius = '4px';
                     a.style.textDecoration = 'none';
                     
-                    /* Add the link to the page */
-                    const recordingContainer = document.getElementById('recordingContainer');
-                    if (recordingContainer) {
-                        recordingContainer.innerHTML = '';
-                        recordingContainer.appendChild(a);
-                        recordingContainer.style.display = 'block';
-                    } else {
-                        /* If container doesn't exist, create one */
-                        const container = document.createElement('div');
-                        container.id = 'recordingContainer';
-                        container.style.margin = '20px 0';
-                        container.appendChild(a);
+                    /* Create or clear the recording container */
+                    let recordingContainer = document.getElementById('recordingContainer');
+                    if (!recordingContainer) {
+                        recordingContainer = document.createElement('div');
+                        recordingContainer.id = 'recordingContainer';
+                        recordingContainer.style.margin = '20px 0';
+                        recordingContainer.style.textAlign = 'center';
                         
                         /* Find a good place to add it */
-                        const callControls = document.querySelector('.call-controls') || 
-                                            document.querySelector('.container');
-                        if (callControls) {
-                            callControls.appendChild(container);
+                        const container = document.querySelector('.container');
+                        if (container) {
+                            container.appendChild(recordingContainer);
                         } else {
-                            document.body.appendChild(container);
+                            document.body.appendChild(recordingContainer);
                         }
+                    } else {
+                        recordingContainer.innerHTML = '';
                     }
+                    
+                    /* Add the download link */
+                    recordingContainer.appendChild(a);
+                    recordingContainer.style.display = 'block';
                     
                     /* Reset recording state */
                     recordedChunks = [];
@@ -726,7 +808,7 @@
                 /* Start recording timer */
                 startRecordingTimer();
                 
-                console.log('Call recording started');
+                console.log('Call recording started successfully');
                 
             } catch (error) {
                 console.error('Error starting call recording:', error);
@@ -736,6 +818,8 @@
 
         /* Function to stop recording */
         function stopCallRecording() {
+            console.log('Attempting to stop call recording');
+            
             if (!isRecording || !mediaRecorder) {
                 console.log('No active recording to stop');
                 return;
@@ -757,51 +841,29 @@
 
         /* Function to update the recording UI */
         function updateRecordingUI(isRecording) {
-            /* Find or create recording button */
-            let recordButton = document.getElementById('recordCallBtn');
+            console.log(`Updating recording UI, isRecording: ${isRecording}`);
             
-            if (!recordButton) {
-                /* Create recording button if it doesn't exist */
-                recordButton = document.createElement('button');
-                recordButton.id = 'recordCallBtn';
-                recordButton.className = 'control-button';
-                
-                /* Create icon */
-                const icon = document.createElement('i');
-                icon.className = 'material-icons';
-                icon.textContent = 'fiber_manual_record';
-                recordButton.appendChild(icon);
-                
-                /* Add click handler */
-                recordButton.addEventListener('click', function() {
-                    if (isRecording) {
-                        stopCallRecording();
-                    } else {
-                        startCallRecording();
-                    }
-                });
-                
-                /* Find a place to add the button */
-                const callControls = document.querySelector('.call-controls');
-                if (callControls) {
-                    callControls.appendChild(recordButton);
+            /* Find recording button */
+            const recordButton = document.getElementById('recordCallBtn');
+            
+            if (recordButton) {
+                /* Update button appearance */
+                if (isRecording) {
+                    recordButton.style.backgroundColor = '#d32f2f';
+                    recordButton.style.color = 'white';
+                    recordButton.querySelector('i').textContent = 'stop';
+                    recordButton.title = 'Stop Recording';
+                } else {
+                    recordButton.style.backgroundColor = '#f8f9fa';
+                    recordButton.style.color = '#d32f2f';
+                    recordButton.querySelector('i').textContent = 'fiber_manual_record';
+                    recordButton.title = 'Record Call';
                 }
-            }
-            
-            /* Update button appearance */
-            if (isRecording) {
-                recordButton.classList.add('recording');
-                recordButton.querySelector('i').textContent = 'stop';
-                recordButton.title = 'Stop Recording';
-            } else {
-                recordButton.classList.remove('recording');
-                recordButton.querySelector('i').textContent = 'fiber_manual_record';
-                recordButton.title = 'Record Call';
             }
             
             /* Find or create recording timer */
             let timerElement = document.getElementById('recordingTimer');
-            if (!timerElement) {
+            if (!timerElement && isRecording) {
                 timerElement = document.createElement('div');
                 timerElement.id = 'recordingTimer';
                 timerElement.className = 'recording-timer';
@@ -815,16 +877,19 @@
                 
                 /* Find a place to add the timer */
                 const container = document.querySelector('.call-status-container') || 
-                                  document.querySelector('.call-controls');
+                                  document.querySelector('.call-controls') ||
+                                  document.querySelector('.container');
                 if (container) {
                     container.appendChild(timerElement);
                 }
             }
             
             /* Show/hide timer */
-            timerElement.style.display = isRecording ? 'block' : 'none';
-            if (isRecording) {
-                timerElement.textContent = '00:00';
+            if (timerElement) {
+                timerElement.style.display = isRecording ? 'block' : 'none';
+                if (isRecording) {
+                    timerElement.textContent = 'Recording: 00:00';
+                }
             }
         }
 
@@ -854,23 +919,53 @@
             }
         }
 
-        /* Add this to your session.on('ended') handler */
-        session.on('ended', function() {
-            /* Stop recording if active */
-            if (isRecording) {
-                stopCallRecording();
-            }
+        /* Add this to your session.on('accepted') handler */
+        /* This ensures the recording button appears when a call is connected */
+        document.addEventListener('DOMContentLoaded', function() {
+            /* Find the original session.on('accepted') handler */
+            const originalAcceptedHandler = window.JsSIP.UA.prototype.on;
             
-            /* Other existing code... */
+            /* Override it to add our functionality */
+            window.JsSIP.UA.prototype.on = function(event, callback) {
+                if (event === 'newRTCSession') {
+                    const originalCallback = callback;
+                    callback = function(data) {
+                        const session = data.session;
+                        
+                        /* Store the active session globally */
+                        window.activeSession = session;
+                        
+                        /* Add our handler for the accepted event */
+                        session.on('accepted', function() {
+                            console.log('Call accepted - adding recording button');
+                            
+                            /* Add a slight delay to ensure the UI is ready */
+                            setTimeout(createRecordingButton, 500);
+                        });
+                        
+                        /* Add our handler for the ended event */
+                        session.on('ended', function() {
+                            console.log('Call ended - checking recording status');
+                            
+                            /* Stop recording if active */
+                            if (isRecording) {
+                                stopCallRecording();
+                            }
+                        });
+                        
+                        /* Call the original callback */
+                        originalCallback(data);
+                    };
+                }
+                
+                /* Call the original method */
+                return originalAcceptedHandler.call(this, event, callback);
+            };
         });
 
         /* Add CSS for recording button */
         const style = document.createElement('style');
         style.textContent = `
-        .control-button.recording {
-            background-color: #d32f2f;
-            color: white;
-        }
         .recording-timer {
             animation: blink 1s infinite alternate;
         }
@@ -884,6 +979,9 @@
         }
         `;
         document.head.appendChild(style);
+
+        /* Log that recording functionality has been initialized */
+        console.log('Call recording functionality initialized');
     </style>
 </head>
 <body>
