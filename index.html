@@ -641,15 +641,15 @@
 
         <div id="registration">
             <div class="input-group">
-                <input type="text" id="username" placeholder=" " value="sip:1010@loupdb..com">
+                <input type="text" id="username" placeholder=" " value="sip:108wp@Cbecker2.vested.nova">
                 <label>SIP Username</label>
             </div>
             <div class="input-group">
-                <input type="password" id="password" placeholder=" " value="joGUBrSo">
+                <input type="password" id="password" placeholder=" " value="HS8S73qy5eYjSQ52">
                 <label>Password</label>
             </div>
             <div class="input-group">
-                <input type="text" id="sipServer" placeholder=" " value="wss://alpha.netsapiens.com:9002">
+                <input type="text" id="sipServer" placeholder=" " value="wss://core1-dal.vestednetworks.com:9002">
                 <label>WebSocket URL</label>
             </div>
             <button id="registerBtn">
@@ -818,6 +818,7 @@
 
                 function setupSessionHandlers(session) {
                     session.on('accepted', async function() {
+                        console.log('Call accepted');
                         updateCallStatus('Connected');
                         showHangupButton();
                         startCallTimer();
@@ -827,43 +828,43 @@
                             const remoteStream = session.connection.getRemoteStreams()[0];
                             const localStream = session.connection.getLocalStreams()[0];
                             
-                            console.log('Call accepted, streams available:', {
+                            console.log('Call streams available:', {
                                 remoteStream: !!remoteStream,
                                 localStream: !!localStream
                             });
                             
                             if (remoteStream) {
-                                // Set up audio element
+                                // IMPORTANT: Set up audio element FIRST before initializing captions
                                 const audioElement = document.getElementById('remoteAudio');
                                 if (audioElement) {
+                                    console.log('Setting up remote audio stream for playback');
                                     audioElement.srcObject = remoteStream;
-                                    audioElement.play().catch(e => console.error('Error playing audio:', e));
+                                    audioElement.play().catch(e => {
+                                        console.error('Error playing audio:', e);
+                                        // Try again after a short delay
+                                        setTimeout(() => {
+                                            audioElement.play().catch(e => console.error('Second play attempt failed:', e));
+                                        }, 100);
+                                    });
                                 }
                                 
-                                // Initialize captions
+                                // Now initialize captions AFTER audio is set up
+                                document.getElementById('captionContainer').classList.remove('hidden');
+                                
                                 if (!captioningSystem) {
                                     captioningSystem = new ClosedCaptioning({
                                         captionContainerId: 'captionContainer',
                                         captionContainerClass: 'caption-container'
                                     });
-                                    
-                                    // Manually show the container
-                                    document.getElementById('captionContainer').classList.remove('hidden');
                                 }
                                 
-                                // Initialize with streams
                                 if (localStream) {
                                     await captioningSystem.initialize(localStream, remoteStream);
                                     console.log('Captions initialized with both streams');
-                                } else {
-                                    console.warn('Local stream not available, captions may be limited');
-                                    await captioningSystem.initialize(null, remoteStream);
                                 }
-                            } else {
-                                console.error('No remote stream available for captions');
                             }
                         } catch (error) {
-                            console.error('Error setting up captions:', error);
+                            console.error('Error setting up call:', error);
                         }
                     });
 
