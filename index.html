@@ -943,8 +943,79 @@
                             console.log('Initiating call to:', callNumber, 'with options:', options);
                             session = userAgent.call(callNumber, options);
                             
-                            // Explicitly set up session handlers including captions
-                            setupSessionHandlers(session);
+                            // Create captioning system if it doesn't exist
+                            if (!captioningSystem) {
+                                console.log('Creating captioning system for outbound call');
+                                captioningSystem = new ClosedCaptioning({
+                                    captionContainerId: 'captionContainer',
+                                    captionContainerClass: 'caption-container'
+                                });
+                            }
+                            
+                            // Explicitly set up session handlers
+                            session.on('accepted', async function() {
+                                console.log('Outbound call accepted');
+                                updateCallStatus('Connected');
+                                showHangupButton();
+                                startCallTimer();
+                                
+                                try {
+                                    // Get streams with error handling
+                                    const remoteStream = session.connection.getRemoteStreams()[0];
+                                    const localStream = session.connection.getLocalStreams()[0];
+                                    
+                                    console.log('Outbound call streams available:', {
+                                        remoteStream: !!remoteStream,
+                                        localStream: !!localStream
+                                    });
+                                    
+                                    if (remoteStream) {
+                                        // Set up audio element
+                                        const audioElement = document.getElementById('remoteAudio');
+                                        if (audioElement) {
+                                            audioElement.srcObject = remoteStream;
+                                            audioElement.play().catch(e => console.error('Error playing audio:', e));
+                                        }
+                                        
+                                        // Manually show the container
+                                        document.getElementById('captionContainer').classList.remove('hidden');
+                                        console.log('Caption container should now be visible');
+                                        
+                                        // Initialize with streams
+                                        if (localStream) {
+                                            await captioningSystem.initialize(localStream, remoteStream);
+                                            console.log('Captions initialized with both streams for outbound call');
+                                        } else {
+                                            console.warn('Local stream not available for outbound call, captions may be limited');
+                                            await captioningSystem.initialize(null, remoteStream);
+                                        }
+                                    } else {
+                                        console.error('No remote stream available for outbound call captions');
+                                    }
+                                } catch (error) {
+                                    console.error('Error setting up captions for outbound call:', error);
+                                }
+                            });
+                            
+                            // Add other session handlers
+                            session.on('failed', function(e) {
+                                console.log('Call failed:', e);
+                                updateCallStatus('Call Failed');
+                                showCallButton();
+                                stopRingtone();
+                            });
+                            
+                            session.on('ended', function() {
+                                console.log('Call ended');
+                                updateCallStatus('Call Ended');
+                                showCallButton();
+                                stopRingtone();
+                                stopCallTimer();
+                                hideCaptionContainer();
+                                hideDialpadContainer();
+                            });
+                            
+                            // Other session handlers...
                             
                             showHangupButton();
                             updateCallStatus('Calling');
