@@ -1835,6 +1835,48 @@
             document.getElementById('captionContainer').classList.add('hidden');
         }
 
+        // Updated startCallTimer function to use existing timer element
+        function startCallTimer() {
+            console.log('Starting call timer');
+            
+            // Clear any existing timer
+            if (window.callTimerInterval) {
+                clearInterval(window.callTimerInterval);
+            }
+            
+            // Initialize call start time
+            window.callStartTime = new Date();
+            
+            // Find the existing call timer element
+            let timerElement = document.querySelector('.call-timer');
+            
+            // If it doesn't exist, look for one with the ID
+            if (!timerElement) {
+                timerElement = document.getElementById('callTimer');
+            }
+            
+            // If we still don't have a timer element, don't create a new one
+            // as it would be outside the design
+            if (!timerElement) {
+                console.warn('No call timer element found with class .call-timer or id #callTimer');
+                return;
+            }
+            
+            // Make sure the timer is visible
+            timerElement.style.display = 'block';
+            timerElement.textContent = '00:00';
+            
+            // Update timer every second
+            window.callTimerInterval = setInterval(() => {
+                const now = new Date();
+                const diff = now - window.callStartTime;
+                const minutes = Math.floor(diff / 60000);
+                const seconds = Math.floor((diff % 60000) / 1000);
+                timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+
+        // Updated stopCallTimer function
         function stopCallTimer() {
             console.log('Stopping call timer');
             if (window.callTimerInterval) {
