@@ -756,7 +756,13 @@
                 const configuration = {
                     sockets: [socket],
                     uri: sipUri,
-                    password: password
+                    password: password,
+                    register: true,
+                    register_expires: 300,
+                    session_timers: false,
+                    user_agent: 'Open Phone WebRTC',
+                    connection_recovery_min_interval: 2,
+                    connection_recovery_max_interval: 30
                 };
 
                 console.log('Attempting connection with config:', {
@@ -776,14 +782,10 @@
                     console.log('UA disconnected');
                 });
 
-                userAgent.on('registered', async function() {
-                    try {
-                        await navigator.mediaDevices.getUserMedia({ audio: true });
-                        await loadAudioDevices().catch(error => {
-                            console.error('Failed to load audio devices:', error);
-                            updateStatus('Audio device error', 'red');
-                        });
-                        
+                userAgent.on('registered', function() {
+                    navigator.mediaDevices.getUserMedia({ audio: true })
+                        .then(() => loadAudioDevices())
+                        .then(() => {
                         // Create or get audio element
                         let audioElement = document.getElementById('remoteAudio');
                         if (!audioElement) {
@@ -795,315 +797,75 @@
                         
                         // Set initial speaker if available
                         if (typeof audioElement.sinkId !== 'undefined' && currentSpeakerId) {
-                            await audioElement.setSinkId(currentSpeakerId)
-                                .catch(error => console.error('Error setting initial audio output:', error));
-                        }
-                        
-                        console.log('Audio element ready:', {
-                            autoplay: audioElement.autoplay,
-                            sinkId: audioElement.sinkId,
-                            currentSpeakerId: currentSpeakerId
-                        });
-                        
+                                return audioElement.setSinkId(currentSpeakerId);
+                            }
+                        })
+                        .then(() => {
                         document.getElementById('status').textContent = 'Ready';
                         document.getElementById('softphone-ui').style.display = 'block';
                         document.getElementById('registration').style.display = 'none';
-                    } catch (error) {
+                        })
+                        .catch(error => {
                         console.error('Setup error:', error);
                         document.getElementById('mic-status').classList.add('error');
                         document.getElementById('selected-mic-name').textContent = 'Audio setup failed';
-                    }
+                        });
                 });
 
                 userAgent.on('registrationFailed', function(error) {
                     document.getElementById('status').textContent = 'Registration failed: ' + error.cause;
                 });
 
-                function setupSessionHandlers(session) {
-                    session.on('accepted', function() {
-                        console.log('Call accepted');
-                        updateCallStatus('Connected');
-                        showHangupButton();
-                        
-                        try {
-                            // Start the call timer
-                            startCallTimer();
-                            
-                            // Get the remote stream
-                            const remoteStream = session.connection.getRemoteStreams()[0];
-                            const localStream = session.connection.getLocalStreams()[0];
-                            
-                            console.log('Call streams available:', {
-                                remoteStream: !!remoteStream,
-                                localStream: !!localStream
-                            });
-                            
-                            if (remoteStream) {
-                                // Set up audio playback - keep this simple
-                                const audioElement = document.getElementById('remoteAudio');
-                                if (audioElement) {
-                                    console.log('Setting up remote audio stream for playback');
-                                    
-                                    // Basic audio setup
-                                    audioElement.srcObject = remoteStream;
-                                    audioElement.muted = false;
-                                    audioElement.volume = 1.0;
-                                    
-                                    // Play with simple error handling
-                                    audioElement.play().catch(e => {
-                                        console.error('Error playing audio:', e);
-                                    });
-                                    
-                                    console.log('Audio element configured:', {
-                                        muted: audioElement.muted,
-                                        volume: audioElement.volume
-                                    });
-                                }
-                                
-                                // Initialize captions after a short delay
-                                setTimeout(() => {
-                                    // Show caption container
-                                    const captionContainer = document.getElementById('captionContainer');
-                                    if (captionContainer) {
-                                        captionContainer.classList.remove('hidden');
-                                    }
-                                    
-                                    // Initialize captioning system
-                                    if (typeof ClosedCaptioning !== 'undefined') {
-                                        if (!captioningSystem) {
-                                            captioningSystem = new ClosedCaptioning({
-                                                captionContainerId: 'captionContainer',
-                                                captionContainerClass: 'caption-container'
-                                            });
-                                        }
-                                        
-                                        // Initialize with streams
-                                        captioningSystem.initialize(localStream, remoteStream)
-                                            .then(() => console.log('Captions initialized'))
-                                            .catch(err => console.error('Error initializing captions:', err));
-                                    } else {
-                                        console.error('ClosedCaptioning class not available');
-                                    }
-                                }, 1000);
-                            } else {
-                                console.error('No remote stream available');
-                            }
-                        } catch (error) {
-                            console.error('Error in call accepted handler:', error);
-                        }
-                    });
-
-                    // Add failure handling
-                    session.on('failed', function(e) {
-                        console.log('Call failed:', e);
-                        updateCallStatus('Call Failed');
-                        showCallButton();
-                        stopRingtone();
-                    });
-
-                    // Add progress handling
-                    session.on('progress', function() {
-                        console.log('Call in progress...');
-                        updateCallStatus('Ringing');
-                    });
-
-                    session.on('ended', function() {
-                        console.log('Call ended');
-                        updateCallStatus('Call Ended');
-                        showCallButton();
-                        stopRingtone();
-                        stopCallTimer();
-                        hideCaptionContainer();
-                        hideDialpadContainer();
-                    });
-
-                    session.on('rejected', function() {
-                        console.log('Call rejected');
-                        updateCallStatus('Call Rejected');
-                        showCallButton();
-                        stopRingtone();
-                    });
-
-                    session.on('canceled', function() {
-                        console.log('Call canceled');
-                        updateCallStatus('Call Canceled');
-                        showCallButton();
-                        stopRingtone();
-                    });
-                }
-
-                // Modify the call button handler
-                document.getElementById('callBtn').addEventListener('click', function() {
-                    const displayText = document.getElementById('display-text').textContent;
-                    if (displayText && userAgent) {
-                        try {
-                            // Format the number properly for external calls
-                            let phoneNumber = displayText.trim();
-                            
-                            // If it's a US number (10 digits), add '1' prefix
-                            if (/^\d{10}$/.test(phoneNumber)) {
-                                phoneNumber = '1' + phoneNumber;
-                            }
-                            
-                            // Format the SIP URI for outbound calls
-                            const callNumber = `sip:${phoneNumber}@alpha1.netsapiens.com`;
-
-                            const options = {
-                                mediaConstraints: { 
-                                    audio: true, 
-                                    video: false 
-                                },
-                                pcConfig: {
-                                    iceServers: [
-                                        { urls: ['stun:stun.l.google.com:19302'] }
-                                    ]
-                                },
-                                extraHeaders: [
-                                    'Allow: INVITE,ACK,CANCEL,BYE,UPDATE,OPTIONS',
-                                    'Max-Forwards: 70',
-                                    `Contact: <sip:1010wp@${window.location.hostname}>`,
-                                    'Content-Type: application/sdp'
-                                ]
-                            };
-
-                            console.log('Initiating call to:', callNumber, 'with options:', options);
-                            session = userAgent.call(callNumber, options);
-                            
-                            // Create captioning system if it doesn't exist
-                            if (!captioningSystem) {
-                                console.log('Creating captioning system for outbound call');
-                                captioningSystem = new ClosedCaptioning({
-                                    captionContainerId: 'captionContainer',
-                                    captionContainerClass: 'caption-container'
-                                });
-                            }
-                            
-                            // Explicitly set up session handlers
-                            session.on('accepted', async function() {
-                                console.log('Outbound call accepted');
-                                updateCallStatus('Connected');
-                                showHangupButton();
-                                startCallTimer();
-                                
-                                try {
-                                    // Get streams with error handling
-                                    const remoteStream = session.connection.getRemoteStreams()[0];
-                                    const localStream = session.connection.getLocalStreams()[0];
-                                    
-                                    console.log('Outbound call streams available:', {
-                                        remoteStream: !!remoteStream,
-                                        localStream: !!localStream
-                                    });
-                                    
-                                    if (remoteStream) {
-                                        // Set up audio element
-                                        const audioElement = document.getElementById('remoteAudio');
-                                        if (audioElement) {
-                                            audioElement.srcObject = remoteStream;
-                                            await audioElement.play();
-                                        }
-                                        
-                                        // Manually show the container
-                                        document.getElementById('captionContainer').classList.remove('hidden');
-                                        console.log('Caption container should now be visible');
-                                        
-                                        // Initialize with streams
-                                        if (localStream) {
-                                            await captioningSystem.initialize(localStream, remoteStream);
-                                            console.log('Captions initialized with both streams for outbound call');
-                                        } else {
-                                            console.warn('Local stream not available for outbound call, captions may be limited');
-                                            await captioningSystem.initialize(null, remoteStream);
-                                        }
-                                    } else {
-                                        console.error('No remote stream available for outbound call captions');
-                                    }
-                                } catch (error) {
-                                    console.error('Error setting up captions for outbound call:', error);
-                                }
-                            });
-                            
-                            // Add other session handlers
-                            session.on('failed', function(e) {
-                                console.log('Call failed:', e);
-                                updateCallStatus('Call Failed');
-                                showCallButton();
-                                stopRingtone();
-                            });
-                            
-                            session.on('ended', function() {
-                                console.log('Call ended');
-                                updateCallStatus('Call Ended');
-                                showCallButton();
-                                stopRingtone();
-                                stopCallTimer();
-                                hideCaptionContainer();
-                                hideDialpadContainer();
-                            });
-                            
-                            // Other session handlers...
-                            
-                            showHangupButton();
-                            updateCallStatus('Calling');
-                        } catch (error) {
-                            console.error('Error initiating call:', error);
-                            updateCallStatus('Call Failed');
-                            showCallButton();
-                        }
-                    });
-                });
-
-                document.getElementById('answerBtn').addEventListener('click', function() {
-                    if (session) {
-                        stopRingtone();
-                        try {
-                            await session.answer({
-                                mediaConstraints: { audio: true, video: false }
-                            });
-                        } catch (error) {
-                            console.error('Error answering call:', error);
-                            updateCallStatus('Failed to answer');
-                        }
-                        setupSessionHandlers(session);
-                        showHangupButton();
-                        updateCallStatus('Connected');
-                        startSpeechRecognition();
-                        showCaptionContainer();
-                    }
-                });
-
-                document.getElementById('hangupBtn').addEventListener('click', function() {
-                    if (session) {
-                        session.terminate();
-                        updateCallStatus('Ended');
-                        showCallButton();
-                        stopRingtone();
-                    }
-                });
-
-                // Add incoming call handler
                 userAgent.on('newRTCSession', function(data) {
                     session = data.session;
+                    
                     if (session.direction === 'incoming') {
+                        console.log('Incoming call received');
                         showAnswerButton();
                         updateCallStatus('Incoming Call');
-                        
-                        // Explicitly set up session handlers including captions
-                        setupSessionHandlers(session);
                         
                         // Play ringtone
                         if (ringtoneAudio.src) {
                             ringtoneAudio.loop = true;
                             ringtoneAudio.play().catch(e => console.error('Error playing ringtone:', e));
                         }
+                        
+                        // Set up session handlers
+                        setupSessionHandlers(session);
                     }
                 });
 
                 userAgent.start();
 
-            } catch (error) {
+                        } catch (error) {
                 updateStatus(`Error creating user agent: ${error.message}`, 'red');
                 console.error('Full error:', error);
+            }
+        });
+
+        document.getElementById('answerBtn').addEventListener('click', function() {
+            if (session) {
+                stopRingtone();
+                session.answer({
+                    mediaConstraints: { audio: true, video: false }
+                }).catch(error => {
+                    console.error('Error answering call:', error);
+                    updateCallStatus('Failed to answer');
+                });
+                setupSessionHandlers(session);
+                showHangupButton();
+                updateCallStatus('Connected');
+                startSpeechRecognition();
+                showCaptionContainer();
+            }
+        });
+
+        document.getElementById('hangupBtn').addEventListener('click', function() {
+            if (session) {
+                session.terminate();
+                updateCallStatus('Ended');
+                showCallButton();
+                stopRingtone();
             }
         });
 
@@ -1216,19 +978,6 @@
                     });
                 } catch (error) {
                     console.error('Error switching speaker:', error);
-                }
-            }
-
-            // Update microphone
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-                stream = null;
-                try {
-                    stream = await navigator.mediaDevices.getUserMedia({
-                        audio: { deviceId: { exact: currentMicId } }
-                    });
-                } catch (error) {
-                    console.error('Error switching microphone:', error);
                 }
             }
         }
@@ -1634,6 +1383,36 @@
             };
             
             return features;
+        }
+
+        // Add this function if it's not already defined
+        function setupSessionHandlers(session) {
+            session.on('accepted', function() {
+                console.log('Call accepted');
+                updateCallStatus('Connected');
+                showHangupButton();
+                startCallTimer();
+            });
+
+            session.on('failed', function(e) {
+                console.log('Call failed:', e);
+                updateCallStatus('Call Failed');
+                showCallButton();
+                stopRingtone();
+            });
+
+            session.on('ended', function() {
+                console.log('Call ended');
+                updateCallStatus('Call Ended');
+                showCallButton();
+                stopRingtone();
+                stopCallTimer();
+            });
+
+            session.on('progress', function() {
+                console.log('Call in progress');
+                updateCallStatus('Ringing');
+            });
         }
     })();
     </script>
