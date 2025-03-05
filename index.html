@@ -2015,6 +2015,77 @@
 
         // Call this function to test audio
         // testAudio();
+
+        // Simple, direct approach to add recording button to the button-container
+
+        // Execute this code immediately
+        (function() {
+            console.log('Adding recording button directly to button-container');
+            
+            // Function to create and add the recording button
+            function addRecordingButton() {
+                console.log('Attempting to add recording button to button-container');
+                
+                // Find the button container
+                const buttonContainer = document.querySelector('.button-container');
+                
+                if (!buttonContainer) {
+                    console.error('Could not find .button-container element');
+                    return false;
+                }
+                
+                console.log('Found button-container:', buttonContainer);
+                
+                // Check if button already exists
+                if (document.getElementById('recordCallBtn')) {
+                    console.log('Recording button already exists');
+                    return true;
+                }
+                
+                // Create button wrapper (similar to other buttons)
+                const buttonWrapper = document.createElement('div');
+                buttonWrapper.className = 'button-wrapper';
+                buttonWrapper.id = 'recordBtnWrapper';
+                
+                // Create the button
+                const recordButton = document.createElement('button');
+                recordButton.id = 'recordCallBtn';
+                recordButton.className = 'control-button';
+                recordButton.innerHTML = '<span style="color: red;">●</span> Record';
+                
+                // Add the button to the wrapper
+                buttonWrapper.appendChild(recordButton);
+                
+                // Add the wrapper to the button container
+                buttonContainer.appendChild(buttonWrapper);
+                
+                console.log('Recording button added successfully');
+                
+                // Add click handler
+                recordButton.addEventListener('click', function() {
+                    alert('Recording functionality will be implemented here');
+                    // We'll implement the actual recording later
+                });
+                
+                return true;
+            }
+            
+            // Try to add the button immediately
+            if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                addRecordingButton();
+            } else {
+                // Wait for DOM to be ready
+                document.addEventListener('DOMContentLoaded', addRecordingButton);
+            }
+            
+            // Also try periodically in case the button container is added dynamically
+            const checkInterval = setInterval(function() {
+                if (addRecordingButton()) {
+                    // If button was added successfully, we can stop checking
+                    clearInterval(checkInterval);
+                }
+            }, 1000);
+        })();
     })();
     </script>
 </body>
