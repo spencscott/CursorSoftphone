@@ -1,8 +1,7 @@
 <!DOCTYPE html>
-<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initialscale=1.0">
     <title>Open Phone</title>
     <script src="jssip-3.10.0.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
@@ -237,7 +236,16 @@
         .hangup-button,
         .record-button,
         .download-button {
-            min-width: 120px;
+            width: 100%;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
         }
 
         .call-button,
@@ -1511,20 +1519,906 @@
             }
         }
 
-        // Add this to your setupSessionHandlers function
-        function setupSessionHandlers(session) {
-            // ... existing session handlers ...
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                isRecording = false;
+                
+                // Update UI
+                const recordBtn = document.getElementById('recordBtn');
+                recordBtn.classList.remove('recording');
+                recordBtn.innerHTML = '<i class="material-icons">fiber_manual_record</i>Record';
+                
+                console.log('Recording stopped');
+            }
+        }
+
+        function downloadRecording() {
+            if (recordedChunks.length === 0) {
+                console.warn('No recording data available');
+                return;
+            }
             
+            const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            a.href = url;
+            a.download = `call-recording-${timestamp}.webm`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function setupSessionHandlers(session) {
+            session.on('peerconnection', (e) => {
+                console.log('Peer connection event');
+                    </div>
+                    <div class="input-group">
+                        <label for="speakerSelect">Speaker</label>
+                        <select id="speakerSelect"></select>
+                    </div>
+                    <div class="input-group">
+                        <div class="ringtone-container">
+                            <input type="file" id="ringtoneInput" accept="audio/*" style="display: none;">
+                            <button id="selectRingtone" class="ringtone-button">
+                                <i class="material-icons">music_note</i>
+                                Ringtone
+                            </button>
+                            <span id="selectedRingtoneName">Default Ringtone</span>
+                            <button id="playRingtone" class="ringtone-preview">
+                                <i class="material-icons">play_arrow</i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="registration">
+            <div class="input-group">
+                <input type="text" id="username" placeholder=" " value="sip:1010@loupdb.com">
+                <label>SIP Username</label>
+            </div>
+            <div class="input-group">
+                <input type="password" id="password" placeholder=" " value="joGUBrSo">
+                <label>Password</label>
+            </div>
+            <div class="input-group">
+                <input type="text" id="sipServer" placeholder=" " value="wss://alpha.netsapiens.com:9002">
+                <label>WebSocket URL</label>
+            </div>
+            <button id="registerBtn">
+                <i class="material-icons">login</i>
+                Register
+            </button>
+            <div id="status"></div>
+        </div>
+
+        <div id="softphone-ui" style="display:none;">
+            <div class="number-display-container">
+                <div id="display" class="display-with-clear">
+                    <span id="display-text"></span>
+                    <button id="clearBtn" class="clear-button">
+                        <i class="material-icons">backspace</i>
+                    </button>
+                </div>
+                <button id="toggleDialpad" class="toggle-dialpad">
+                    <i class="material-icons">dialpad</i>
+                </button>
+            </div>
+            
+            <div id="dialpadContainer" class="dialpad-container hidden">
+                <div class="dialpad">
+                    <button class="dial-digit" data-digit="1">1</button>
+                    <button class="dial-digit" data-digit="2">2</button>
+                    <button class="dial-digit" data-digit="3">3</button>
+                    <button class="dial-digit" data-digit="4">4</button>
+                    <button class="dial-digit" data-digit="5">5</button>
+                    <button class="dial-digit" data-digit="6">6</button>
+                    <button class="dial-digit" data-digit="7">7</button>
+                    <button class="dial-digit" data-digit="8">8</button>
+                    <button class="dial-digit" data-digit="9">9</button>
+                    <button class="dial-digit" data-digit="*">*</button>
+                    <button class="dial-digit" data-digit="0">0</button>
+                    <button class="dial-digit" data-digit="#">#</button>
+                </div>
+            </div>
+
+            <div id="captionContainer" class="caption-container hidden">
+                <div id="captions" class="captions"></div>
+            </div>
+
+            <div id="mic-status">
+                <i class="material-icons">mic</i>
+                <span id="selected-mic-name"></span>
+                <span>ready</span>
+            </div>
+            <div class="button-container">
+                <div class="button-wrapper" id="callBtnWrapper">
+                    <button id="callBtn" class="call-button">
+                        <i class="material-icons">call</i>
+                        Call
+                    </button>
+                </div>
+                <div class="button-wrapper hidden" id="answerBtnWrapper">
+                    <button id="answerBtn" class="answer-button">
+                        <i class="material-icons">call</i>
+                        Answer
+                    </button>
+                </div>
+                <div class="button-wrapper hidden" id="hangupBtnWrapper">
+                    <button id="hangupBtn" class="hangup-button">
+                        <i class="material-icons">call_end</i>
+                        Hang Up
+                    </button>
+                </div>
+                <div class="button-wrapper hidden" id="recordBtnWrapper">
+                    <button id="recordBtn" class="record-button">
+                        <i class="material-icons">fiber_manual_record</i>
+                        Record
+                    </button>
+                </div>
+                <div class="button-wrapper hidden" id="downloadBtnWrapper">
+                    <button id="downloadBtn" class="download-button">
+                        <i class="material-icons">download</i>
+                        Download Recording
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        let userAgent;
+        let session;
+        const statusDisplay = document.getElementById('status');
+        let currentMicId = null;
+        let currentSpeakerId = null;
+        let stream = null;
+        let callTimer;
+        let callStartTime;
+        let ringtoneAudio = new Audio();
+        let selectedRingtone = null;
+        let captioningSystem = null;
+        let mediaRecorder;
+        let recordedChunks = [];
+        let isRecording = false;
+
+        function updateStatus(status, color = 'black') {
+            console.log('Status:', status);
+            statusDisplay.textContent = status;
+            statusDisplay.style.color = color;
+        }
+
+        document.getElementById('registerBtn').addEventListener('click', function() {
+            const sipUri = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const sipServer = document.getElementById('sipServer').value;
+            
+            if (!sipUri || !password || !sipServer) {
+                updateStatus('Please fill in all registration fields.', 'red');
+                return;
+            }
+
+            try {
+                const socket = new JsSIP.WebSocketInterface(sipServer);
+                const configuration = {
+                    sockets: [socket],
+                    uri: sipUri,
+                    password: password,
+                    register: true,
+                    register_expires: 300,
+                    session_timers: false,
+                    user_agent: 'Open Phone WebRTC',
+                    connection_recovery_min_interval: 2,
+                    connection_recovery_max_interval: 30
+                };
+
+                console.log('Attempting connection with config:', {
+                    ...configuration,
+                    password: '***'
+                });
+
+                userAgent = new JsSIP.UA(configuration);
+
+                userAgent.on('connected', function() {
+                    updateStatus('WebSocket Connected - Registering...', 'blue');
+                    console.log('UA connected!');
+                });
+
+                userAgent.on('disconnected', function() {
+                    updateStatus('WebSocket Disconnected', 'red');
+                    console.log('UA disconnected');
+                });
+
+                userAgent.on('registered', function() {
+                    navigator.mediaDevices.getUserMedia({ audio: true })
+                        .then(() => loadAudioDevices())
+                        .then(() => {
+                        // Create or get audio element
+                        let audioElement = document.getElementById('remoteAudio');
+                        if (!audioElement) {
+                            audioElement = document.createElement('audio');
+                            audioElement.id = 'remoteAudio';
+                            audioElement.autoplay = true;
+                            document.body.appendChild(audioElement);
+                        }
+                        
+                        // Set initial speaker if available
+                        if (typeof audioElement.sinkId !== 'undefined' && currentSpeakerId) {
+                                return audioElement.setSinkId(currentSpeakerId);
+                            }
+                        })
+                        .then(() => {
+                        document.getElementById('status').textContent = 'Ready';
+                        document.getElementById('softphone-ui').style.display = 'block';
+                        document.getElementById('registration').style.display = 'none';
+                        })
+                        .catch(error => {
+                        console.error('Setup error:', error);
+                        document.getElementById('mic-status').classList.add('error');
+                        document.getElementById('selected-mic-name').textContent = 'Audio setup failed';
+                        });
+                });
+
+                userAgent.on('registrationFailed', function(error) {
+                    document.getElementById('status').textContent = 'Registration failed: ' + error.cause;
+                });
+
+                userAgent.on('newRTCSession', function(data) {
+                    session = data.session;
+                    
+                    if (session.direction === 'incoming') {
+                        console.log('Incoming call received');
+                        showAnswerButton();
+                        updateCallStatus('Incoming Call');
+                        
+                        // Play ringtone
+                        if (ringtoneAudio.src) {
+                            ringtoneAudio.loop = true;
+                            ringtoneAudio.play().catch(e => console.error('Error playing ringtone:', e));
+                        }
+                        
+                        // Set up session handlers
+                        setupSessionHandlers(session);
+                    }
+                });
+
+                userAgent.start();
+
+                        } catch (error) {
+                updateStatus(`Error creating user agent: ${error.message}`, 'red');
+                console.error('Full error:', error);
+            }
+        });
+
+        document.getElementById('answerBtn').addEventListener('click', function() {
+            if (session) {
+                stopRingtone();
+                session.answer({
+                    mediaConstraints: { audio: true, video: false }
+                }).catch(error => {
+                    console.error('Error answering call:', error);
+                    updateCallStatus('Failed to answer');
+                });
+                setupSessionHandlers(session);
+                showHangupButton();
+                updateCallStatus('Connected');
+                startSpeechRecognition();
+                showCaptionContainer();
+            }
+        });
+
+        document.getElementById('hangupBtn').addEventListener('click', function() {
+            if (session) {
+                session.terminate();
+                updateCallStatus('Ended');
+                showCallButton();
+                stopRingtone();
+            }
+        });
+
+        const displayText = document.getElementById('display-text');
+        document.querySelectorAll('.dial-digit').forEach(function(button) {
+            button.addEventListener('click', function() {
+                displayText.textContent += this.getAttribute('data-digit');
+            });
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', function() {
+            displayText.textContent = '';
+        });
+
+        async function loadAudioDevices() {
+            try {
+                await navigator.mediaDevices.getUserMedia({ audio: true });
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const micSelect = document.getElementById('micSelect');
+                const speakerSelect = document.getElementById('speakerSelect');
+                
+                micSelect.innerHTML = '';
+                speakerSelect.innerHTML = '';
+
+                // Handle microphones
+                const mics = devices.filter(device => device.kind === 'audioinput');
+                mics.forEach(device => {
+                    const option = new Option(device.label || `Microphone (${device.deviceId.slice(0,5)})`, device.deviceId);
+                    micSelect.add(option);
+                });
+
+                // Handle speakers
+                const speakers = devices.filter(device => device.kind === 'audiooutput');
+                speakers.forEach(device => {
+                    const option = new Option(device.label || `Speaker (${device.deviceId.slice(0,5)})`, device.deviceId);
+                    speakerSelect.add(option);
+                });
+
+                // Load saved preferences
+                const savedMicId = localStorage.getItem('preferredMicId');
+                const savedSpeakerId = localStorage.getItem('preferredSpeakerId');
+
+                if (savedMicId && micSelect.querySelector(`option[value="${savedMicId}"]`)) {
+                    micSelect.value = savedMicId;
+                    currentMicId = savedMicId;
+                }
+
+                if (savedSpeakerId && speakerSelect.querySelector(`option[value="${savedSpeakerId}"]`)) {
+                    speakerSelect.value = savedSpeakerId;
+                    currentSpeakerId = savedSpeakerId;
+                }
+
+                updateMicDisplay(micSelect);
+
+                // Create audio element if it doesn't exist
+                if (!document.getElementById('remoteAudio')) {
+                    const audioElement = document.createElement('audio');
+                    audioElement.id = 'remoteAudio';
+                    audioElement.autoplay = true;
+                    
+                    if (typeof audioElement.sinkId !== 'undefined' && currentSpeakerId) {
+                        await audioElement.setSinkId(currentSpeakerId)
+                            .catch(error => console.error('Error setting audio output:', error));
+                    }
+                    
+                    document.body.appendChild(audioElement);
+                }
+
+                // Update mic status to show success
+                document.getElementById('mic-status').classList.remove('error');
+                document.getElementById('selected-mic-name').textContent = micSelect.options[micSelect.selectedIndex].text;
+
+            } catch (error) {
+                console.error('Error loading audio devices:', error);
+                document.getElementById('mic-status').classList.add('error');
+                document.getElementById('selected-mic-name').textContent = 'Audio device access error';
+            }
+        }
+
+        function updateMicDisplay(micSelect) {
+            const selectedMicName = micSelect.options[micSelect.selectedIndex]?.text || 'Default Microphone';
+            const truncatedName = selectedMicName.length > 30 ? 
+                selectedMicName.substring(0, 30) + '...' : 
+                selectedMicName;
+            document.getElementById('selected-mic-name').textContent = truncatedName;
+            document.getElementById('selected-mic-name').title = selectedMicName;
+        }
+
+        async function handleDeviceChange() {
+            const micSelect = document.getElementById('micSelect');
+            const speakerSelect = document.getElementById('speakerSelect');
+
+            currentMicId = micSelect.value;
+            currentSpeakerId = speakerSelect.value;
+
+            updateMicDisplay(micSelect);
+
+            localStorage.setItem('preferredMicId', currentMicId);
+            localStorage.setItem('preferredSpeakerId', currentSpeakerId);
+
+            // Update audio output device
+            const audioElement = document.getElementById('remoteAudio');
+            if (audioElement && typeof audioElement.sinkId !== 'undefined') {
+                try {
+                    await audioElement.setSinkId(currentSpeakerId);
+                    console.log('Speaker changed:', {
+                        newSpeakerId: currentSpeakerId,
+                        audioElement: audioElement,
+                        sinkIdSupported: typeof audioElement.sinkId !== 'undefined'
+                    });
+                } catch (error) {
+                    console.error('Error switching speaker:', error);
+                }
+            }
+        }
+
+        document.getElementById('settingsBtn').addEventListener('click', async () => {
+            try {
+                document.getElementById('settingsModal').style.display = 'flex';
+                await loadAudioDevices();
+            } catch (error) {
+                console.error('Error opening settings:', error);
+                alert('Error accessing audio devices. Please ensure you have granted microphone permissions.');
+            }
+        });
+
+        document.querySelector('.close-btn').addEventListener('click', () => {
+            document.getElementById('settingsModal').style.display = 'none';
+        });
+
+        document.getElementById('micSelect').addEventListener('change', handleDeviceChange);
+        document.getElementById('speakerSelect').addEventListener('change', handleDeviceChange);
+
+        navigator.mediaDevices.addEventListener('devicechange', async () => {
+            console.log('Audio devices changed, reloading device list...');
+            if (document.getElementById('settingsModal').style.display === 'flex') {
+                await loadAudioDevices();
+            }
+        });
+
+        function updateCallStatus(state, isConnected = false) {
+            const callStatus = document.getElementById('call-status');
+            const callState = document.getElementById('call-state');
+            const callTimerDisplay = document.getElementById('call-timer');
+            
+            callStatus.style.display = 'block';
+            callState.textContent = state;
+
+            if (state === 'Connected') {
+                callStatus.style.backgroundColor = '#e8f5e9';
+                callState.parentElement.classList.remove('calling');
+                callState.parentElement.style.color = '#34a853';
+                
+                if (!callTimer) {
+                    callStartTime = Date.now();
+                    callTimer = setInterval(updateCallTimer, 1000);
+                }
+            } else if (state === 'Ended') {
+                clearInterval(callTimer);
+                const peerconnection = e.peerconnection;
+                
+                peerconnection.ontrack = (trackEvent) => {
+                    console.log('Received remote track:', trackEvent);
+                    const audioElement = document.getElementById('remoteAudio');
+                    if (!audioElement) {
+                        console.error('Audio element not found');
+                callTimer = null;
+                setTimeout(() => {
+                    callStatus.style.display = 'none';
+                    callTimerDisplay.textContent = '00:00:00';
+                }, 2000);
+            } else {
+                callStatus.style.backgroundColor = '#e3f2fd';
+                callState.parentElement.classList.add('calling');
+                callState.parentElement.style.color = '#1a73e8';
+            }
+        }
+
+        function updateCallTimer() {
+            const callTimerDisplay = document.getElementById('call-timer');
+            const elapsed = Math.floor((Date.now() - callStartTime) / 1000);
+            
+            const hours = Math.floor(elapsed / 3600);
+            const minutes = Math.floor((elapsed % 3600) / 60);
+            const seconds = elapsed % 60;
+            
+            callTimerDisplay.textContent = 
+                `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        window.addEventListener('beforeunload', () => {
+            if (callTimer) {
+                clearInterval(callTimer);
+            }
+        });
+
+        document.getElementById('toggleDialpad').addEventListener('click', function() {
+            const dialpadContainer = document.getElementById('dialpadContainer');
+            const toggleButton = document.getElementById('toggleDialpad');
+            const dialpad = document.querySelector('.dialpad');
+            
+            if (dialpadContainer.classList.contains('hidden')) {
+                dialpadContainer.classList.remove('hidden');
+                dialpadContainer.offsetHeight;
+                dialpadContainer.style.height = dialpad.offsetHeight + 'px';
+                dialpadContainer.classList.add('visible');
+                toggleButton.classList.add('active');
+            } else {
+                dialpadContainer.style.height = '0';
+                dialpadContainer.classList.remove('visible');
+                toggleButton.classList.remove('active');
+                
+                setTimeout(() => {
+                    if (dialpadContainer.style.height === '0px') {
+                        dialpadContainer.classList.add('hidden');
+                    }
+                }, 300);
+            }
+        });
+
+        window.addEventListener('load', function() {
+            const dialpadContainer = document.getElementById('dialpadContainer');
+            const dialpad = document.querySelector('.dialpad');
+            if (!dialpadContainer.classList.contains('hidden')) {
+                dialpadContainer.style.height = dialpad.offsetHeight + 'px';
+                dialpadContainer.classList.add('visible');
+            }
+        });
+
+        function showCallButton() {
+            document.getElementById('callBtnWrapper').classList.remove('hidden');
+            document.getElementById('answerBtnWrapper').classList.add('hidden');
+            document.getElementById('hangupBtnWrapper').classList.add('hidden');
+        }
+
+        function showAnswerButton() {
+            document.getElementById('callBtnWrapper').classList.add('hidden');
+            document.getElementById('answerBtnWrapper').classList.remove('hidden');
+            document.getElementById('hangupBtnWrapper').classList.add('hidden');
+        }
+
+        function showHangupButton() {
+            document.getElementById('callBtnWrapper').classList.add('hidden');
+            document.getElementById('answerBtnWrapper').classList.add('hidden');
+            document.getElementById('hangupBtnWrapper').classList.remove('hidden');
+            document.getElementById('recordBtnWrapper').classList.remove('hidden');
+            document.getElementById('downloadBtnWrapper').classList.add('hidden');
+        }
+
+        // Initialize ringtone from localStorage if available
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedRingtone = localStorage.getItem('ringtoneData');
+            if (savedRingtone) {
+                ringtoneAudio.src = savedRingtone;
+                const ringtoneName = localStorage.getItem('ringtoneName') || 'Custom Ringtone';
+                document.getElementById('selectedRingtoneName').textContent = ringtoneName;
+            }
+        });
+
+        document.getElementById('selectRingtone').addEventListener('click', () => {
+            document.getElementById('ringtoneInput').click();
+        });
+
+        document.getElementById('ringtoneInput').addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    ringtoneAudio.src = e.target.result;
+                    selectedRingtone = e.target.result;
+                    document.getElementById('selectedRingtoneName').textContent = file.name;
+                    
+                    // Save to localStorage
+                    localStorage.setItem('ringtoneData', e.target.result);
+                    localStorage.setItem('ringtoneName', file.name);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        document.getElementById('playRingtone').addEventListener('click', () => {
+            if (ringtoneAudio.paused) {
+                ringtoneAudio.play();
+                document.getElementById('playRingtone').querySelector('i').textContent = 'stop';
+            } else {
+                ringtoneAudio.pause();
+                ringtoneAudio.currentTime = 0;
+                document.getElementById('playRingtone').querySelector('i').textContent = 'play_arrow';
+            }
+        });
+
+        ringtoneAudio.addEventListener('ended', () => {
+            document.getElementById('playRingtone').querySelector('i').textContent = 'play_arrow';
+        });
+
+        function stopRingtone() {
+            ringtoneAudio.pause();
+            ringtoneAudio.currentTime = 0;
+            ringtoneAudio.loop = false;
+        }
+
+        function startSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (SpeechRecognition) {
+                let recognition = new SpeechRecognition();
+                recognition.lang = 'en-US';
+                recognition.interimResults = true;
+                recognition.continuous = true;
+
+                recognition.onresult = function(event) {
+                    const transcript = Array.from(event.results)
+                        .map(result => result[0])
+                        .map(result => result.transcript)
+                        .join('');
+                    document.getElementById('captions').textContent = transcript;
+                };
+
+                recognition.onerror = function(event) {
+                    console.error('Speech recognition error', event.error);
+                };
+
+                recognition.start();
+            } else {
+                console.warn('Speech recognition not supported in this browser.');
+            }
+        }
+
+        function showCaptionContainer() {
+            document.getElementById('captionContainer').classList.remove('hidden');
+        }
+
+        function hideCaptionContainer() {
+            document.getElementById('captionContainer').classList.add('hidden');
+        }
+
+        // Updated startCallTimer function to use existing timer element
+        function startCallTimer() {
+            console.log('Starting call timer');
+            
+            // Clear any existing timer
+            if (window.callTimerInterval) {
+                clearInterval(window.callTimerInterval);
+            }
+            
+            // Initialize call start time
+            window.callStartTime = new Date();
+            
+            // Find the existing call timer element
+            let timerElement = document.querySelector('.call-timer');
+            
+            // If it doesn't exist, look for one with the ID
+            if (!timerElement) {
+                timerElement = document.getElementById('callTimer');
+            }
+            
+            // If we still don't have a timer element, don't create a new one
+            // as it would be outside the design
+            if (!timerElement) {
+                console.warn('No call timer element found with class .call-timer or id #callTimer');
+                return;
+            }
+            
+            // Make sure the timer is visible
+            timerElement.style.display = 'block';
+            timerElement.textContent = '00:00';
+            
+            // Update timer every second
+            window.callTimerInterval = setInterval(() => {
+                const now = new Date();
+                const diff = now - window.callStartTime;
+                const minutes = Math.floor(diff / 60000);
+                const seconds = Math.floor((diff % 60000) / 1000);
+                timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+
+        // Updated stopCallTimer function
+        function stopCallTimer() {
+            const timerInterval = window.callTimerInterval;
+            if (timerInterval) {
+                window.callTimerInterval = null;
+                clearInterval(timerInterval);
+            }
+        }
+
+        function hideDialpadContainer() {
+            const dialpadContainer = document.getElementById('dialpadContainer');
+            dialpadContainer.style.height = '0';
+            dialpadContainer.classList.add('hidden');
+            setTimeout(() => {
+                if (dialpadContainer.style.height === '0px') {
+                    dialpadContainer.classList.add('hidden');
+                }
+            }, 300);
+        }
+
+        // Add this after your existing event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            const displayText = document.getElementById('display-text');
+            
+            // Allow the display to be focusable
+            displayText.setAttribute('contenteditable', 'true');
+            displayText.setAttribute('spellcheck', 'false');
+            
+            // Handle keyboard input
+            displayText.addEventListener('keydown', function(e) {
+                // Prevent default behavior for most keys to handle them manually
+                if (e.key !== 'Tab') {
+                    e.preventDefault();
+                }
+
+                // Handle numeric input (0-9, *, #)
+                const validKeys = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '#'];
+                if (validKeys.includes(e.key)) {
+                    const currentText = displayText.textContent;
+                    displayText.textContent = currentText + e.key;
+                }
+                
+                // Handle backspace
+                if (e.key === 'Backspace') {
+                    const currentText = displayText.textContent;
+                    displayText.textContent = currentText.slice(0, -1);
+                }
+                
+                // Handle Enter key to trigger call
+                if (e.key === 'Enter') {
+                    const callButton = document.querySelector('.call-button');
+                    if (callButton && !callButton.classList.contains('hidden')) {
+                        callButton.click();
+                    }
+                }
+            });
+
+            // Prevent pasting non-numeric content
+            displayText.addEventListener('paste', function(e) {
+                e.preventDefault();
+                const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+                const numericOnly = pastedText.replace(/[^0-9*#]/g, '');
+                if (numericOnly) {
+                    displayText.textContent += numericOnly;
+                }
+            });
+
+            // Keep focus in the display when typing
+            displayText.addEventListener('blur', function() {
+                displayText.focus();
+            });
+        });
+
+        // Add this function to test audio playback
+        function testAudioPlayback() {
+            const audioElement = document.getElementById('remoteAudio');
+            if (audioElement && audioElement.srcObject) {
+                console.log('Testing audio playback...');
+                
+                // Log current audio state
+                console.log('Audio element state:', {
+                    muted: audioElement.muted,
+                    volume: audioElement.volume,
+                    paused: audioElement.paused,
+                    ended: audioElement.ended,
+                    readyState: audioElement.readyState,
+                    hasAudioTracks: audioElement.srcObject.getAudioTracks().length > 0,
+                    audioTrackEnabled: audioElement.srcObject.getAudioTracks()[0]?.enabled
+                });
+                
+                // Ensure it's not muted and volume is up
+                audioElement.muted = false;
+                audioElement.volume = 1.0;
+                
+                // Try to play
+                audioElement.play().then(() => {
+                    console.log('Audio playback started successfully');
+                }).catch(e => {
+                    console.error('Audio playback test failed:', e);
+                });
+            } else {
+                console.error('No audio element or no stream attached');
+            }
+        }
+
+        // Call this function after the call is established
+        // You can also add a button to trigger this manually for testing
+
+        // Add this function to test audio
+        function testAudio() {
+            // Create a simple audio context
+            const audioContext = new AudioContext();
+            
+            // Create an oscillator
+            const oscillator = audioContext.createOscillator();
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // 440 Hz - A4
+            
+            // Connect to output
+            oscillator.connect(audioContext.destination);
+            
+            // Start and stop after 1 second
+            oscillator.start();
+            setTimeout(() => {
+                oscillator.stop();
+                console.log('Audio test complete - you should have heard a beep');
+            }, 1000);
+            
+            console.log('Testing audio output - you should hear a beep');
+        }
+
+        // Call this function to test audio
+        // testAudio();
+
+        function validatePhoneNumber(number) {
+            const cleaned = number.replace(/\D/g, '');
+            if (!/^\d{10,15}$/.test(cleaned)) {
+                throw new Error('Invalid phone number format');
+            }
+            return cleaned;
+        }
+
+        function checkBrowserSupport() {
+            const features = {
+                webRTC: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
+                speechRecognition: !!(window.SpeechRecognition || window.webkitSpeechRecognition),
+                audioOutput: !!(typeof HTMLAudioElement !== 'undefined' && HTMLAudioElement.prototype.setSinkId)
+            };
+            
+            return features;
+        }
+
+        function setupRecording(session) {
+            const recordBtn = document.getElementById('recordBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            
+            recordBtn.addEventListener('click', async () => {
+                try {
+                    if (!isRecording) {
+                        await startRecording(session);
+                    } else {
+                        stopRecording();
+                    }
+                } catch (error) {
+                    console.error('Recording error:', error);
+                }
+            });
+
+            downloadBtn.addEventListener('click', () => {
+                downloadRecording();
+            });
+        }
+
+        async function startRecording(session) {
+            try {
+                recordedChunks = [];
+                const audioStreams = [];
+
+                // Get remote stream from the audio element
+                const remoteAudio = document.getElementById('remoteAudio');
+                if (remoteAudio && remoteAudio.srcObject) {
+                    audioStreams.push(remoteAudio.srcObject);
+                }
+
+                // Get local stream
+                const localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioStreams.push(localStream);
+
+                // Combine streams
+                const ctx = new AudioContext();
+                const dest = ctx.createMediaStreamDestination();
+                
+                audioStreams.forEach(stream => {
+                    if (stream.getAudioTracks().length > 0) {
+                        const source = ctx.createMediaStreamSource(stream);
+                        source.connect(dest);
+                    }
+                });
+
+                // Create MediaRecorder with specific options
+                mediaRecorder = new MediaRecorder(dest.stream, {
+                    mimeType: 'audio/webm;codecs=opus'
+                        return;
+                    }
+                    
+                    if (trackEvent.track.kind === 'audio') {
+                        console.log('Setting remote audio stream');
+                        audioElement.srcObject = trackEvent.streams[0];
+                        audioElement.play().catch(err => {
+                            console.error('Error playing audio:', err);
+                        });
+                    }
+                };
+            });
+
             session.on('accepted', function() {
                 console.log('Call accepted');
                 updateCallStatus('Connected');
                 showHangupButton();
                 callStartTime = Date.now();
                 callTimer = setInterval(updateCallTimer, 1000);
-                setupRecording(session); // Add this line
+                setupRecording(session);
             });
 
-            // ... rest of the handlers ...
+            // ... other handlers ...
         }
     })();
     </script>
