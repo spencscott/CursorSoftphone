@@ -586,24 +586,24 @@
 
         /* Add this code to implement call recording functionality */
 
-        /* Global variables for recording */
+        // Global variables for recording
         let mediaRecorder = null;
         let recordedChunks = [];
         let isRecording = false;
         let recordingStartTime = null;
         let recordingTimer = null;
 
-        /* Function to create and add the recording button to the UI */
+        // Function to create and add the recording button to the UI
         function createRecordingButton() {
             console.log('Creating recording button');
             
-            /* Check if button already exists */
+            // Check if button already exists
             if (document.getElementById('recordCallBtn')) {
                 console.log('Recording button already exists');
                 return;
             }
             
-            /* Create recording button */
+            // Create recording button
             const recordButton = document.createElement('button');
             recordButton.id = 'recordCallBtn';
             recordButton.className = 'control-button';
@@ -620,13 +620,13 @@
             recordButton.style.justifyContent = 'center';
             recordButton.title = 'Record Call';
             
-            /* Create icon */
+            // Create icon
             const icon = document.createElement('i');
             icon.className = 'material-icons';
             icon.textContent = 'fiber_manual_record';
             recordButton.appendChild(icon);
             
-            /* Add click handler */
+            // Add click handler
             recordButton.addEventListener('click', function() {
                 if (isRecording) {
                     stopCallRecording();
@@ -635,24 +635,24 @@
                 }
             });
             
-            /* Find a place to add the button */
+            // Find a place to add the button
             const hangupButton = document.querySelector('.hangup-button');
             if (hangupButton) {
-                /* Insert before the hangup button */
+                // Insert before the hangup button
                 const parentElement = hangupButton.parentElement;
                 if (parentElement) {
                     parentElement.insertBefore(recordButton, hangupButton);
                     console.log('Recording button added next to hangup button');
                 }
             } else {
-                /* Try to find the call controls */
+                // Try to find the call controls
                 const callControls = document.querySelector('.call-controls') || 
                                     document.querySelector('.button-container');
                 if (callControls) {
                     callControls.appendChild(recordButton);
                     console.log('Recording button added to call controls');
                 } else {
-                    /* Last resort - add to the container */
+                    // Last resort - add to the container
                     const container = document.querySelector('.container');
                     if (container) {
                         container.appendChild(recordButton);
@@ -666,7 +666,7 @@
             console.log('Recording button created');
         }
 
-        /* Function to start recording a call */
+        // Function to start recording a call
         function startCallRecording() {
             console.log('Attempting to start call recording');
             
@@ -676,7 +676,7 @@
             }
             
             try {
-                /* Get the active call session */
+                // Get the active call session
                 const session = window.activeSession;
                 if (!session) {
                     console.error('No active call to record');
@@ -684,7 +684,7 @@
                     return;
                 }
                 
-                /* Get local and remote streams */
+                // Get local and remote streams
                 const localStream = session.connection.getLocalStreams()[0];
                 const remoteStream = session.connection.getRemoteStreams()[0];
                 
@@ -699,29 +699,29 @@
                     remoteTracks: remoteStream.getTracks().length
                 });
                 
-                /* Create a new audio context */
+                // Create a new audio context
                 const audioContext = new AudioContext();
                 
-                /* Create sources for both streams */
+                // Create sources for both streams
                 const localSource = audioContext.createMediaStreamSource(localStream);
                 const remoteSource = audioContext.createMediaStreamSource(remoteStream);
                 
-                /* Create a destination to combine the streams */
+                // Create a destination to combine the streams
                 const destination = audioContext.createMediaStreamDestination();
                 
-                /* Connect both sources to the destination */
+                // Connect both sources to the destination
                 localSource.connect(destination);
                 remoteSource.connect(destination);
                 
-                /* Get the combined stream */
+                // Get the combined stream
                 const combinedStream = destination.stream;
                 
-                /* Create a MediaRecorder with the combined stream */
+                // Create a MediaRecorder with the combined stream
                 mediaRecorder = new MediaRecorder(combinedStream, {
                     mimeType: 'audio/webm'
                 });
                 
-                /* Handle data available event */
+                // Handle data available event
                 mediaRecorder.ondataavailable = function(event) {
                     if (event.data.size > 0) {
                         recordedChunks.push(event.data);
@@ -729,26 +729,26 @@
                     }
                 };
                 
-                /* Handle recording stop */
+                // Handle recording stop
                 mediaRecorder.onstop = function() {
                     console.log('MediaRecorder stopped, processing recording...');
                     
-                    /* Create a blob from the recorded chunks */
+                    // Create a blob from the recorded chunks
                     const blob = new Blob(recordedChunks, {
                         type: 'audio/webm'
                     });
                     
                     console.log(`Recording complete: ${blob.size} bytes`);
                     
-                    /* Create a download link */
+                    // Create a download link
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     
-                    /* Format date for filename */
+                    // Format date for filename
                     const date = new Date();
                     const formattedDate = `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}_${date.getHours().toString().padStart(2, '0')}-${date.getMinutes().toString().padStart(2, '0')}`;
                     
-                    /* Get the phone number from the display */
+                    // Get the phone number from the display
                     const phoneNumber = document.getElementById('display-text')?.textContent.trim() || 'unknown';
                     
                     a.href = url;
@@ -764,7 +764,7 @@
                     a.style.borderRadius = '4px';
                     a.style.textDecoration = 'none';
                     
-                    /* Create or clear the recording container */
+                    // Create or clear the recording container
                     let recordingContainer = document.getElementById('recordingContainer');
                     if (!recordingContainer) {
                         recordingContainer = document.createElement('div');
@@ -772,7 +772,7 @@
                         recordingContainer.style.margin = '20px 0';
                         recordingContainer.style.textAlign = 'center';
                         
-                        /* Find a good place to add it */
+                        // Find a good place to add it
                         const container = document.querySelector('.container');
                         if (container) {
                             container.appendChild(recordingContainer);
@@ -783,29 +783,29 @@
                         recordingContainer.innerHTML = '';
                     }
                     
-                    /* Add the download link */
+                    // Add the download link
                     recordingContainer.appendChild(a);
                     recordingContainer.style.display = 'block';
                     
-                    /* Reset recording state */
+                    // Reset recording state
                     recordedChunks = [];
                     isRecording = false;
                     
-                    /* Update UI */
+                    // Update UI
                     updateRecordingUI(false);
                     
                     console.log('Recording completed and available for download');
                 };
                 
-                /* Start recording */
-                mediaRecorder.start(1000); /* Capture in 1-second chunks */
+                // Start recording
+                mediaRecorder.start(1000); // Capture in 1-second chunks
                 isRecording = true;
                 recordingStartTime = Date.now();
                 
-                /* Update UI */
+                // Update UI
                 updateRecordingUI(true);
                 
-                /* Start recording timer */
+                // Start recording timer
                 startRecordingTimer();
                 
                 console.log('Call recording started successfully');
@@ -816,7 +816,7 @@
             }
         }
 
-        /* Function to stop recording */
+        // Function to stop recording
         function stopCallRecording() {
             console.log('Attempting to stop call recording');
             
@@ -826,10 +826,10 @@
             }
             
             try {
-                /* Stop the media recorder */
+                // Stop the media recorder
                 mediaRecorder.stop();
                 
-                /* Stop the recording timer */
+                // Stop the recording timer
                 stopRecordingTimer();
                 
                 console.log('Call recording stopped');
@@ -839,15 +839,15 @@
             }
         }
 
-        /* Function to update the recording UI */
+        // Function to update the recording UI
         function updateRecordingUI(isRecording) {
             console.log(`Updating recording UI, isRecording: ${isRecording}`);
             
-            /* Find recording button */
+            // Find recording button
             const recordButton = document.getElementById('recordCallBtn');
             
             if (recordButton) {
-                /* Update button appearance */
+                // Update button appearance
                 if (isRecording) {
                     recordButton.style.backgroundColor = '#d32f2f';
                     recordButton.style.color = 'white';
@@ -861,21 +861,21 @@
                 }
             }
             
-            /* Find or create recording timer */
+            // Find or create recording timer
             let timerElement = document.getElementById('recordingTimer');
             if (!timerElement && isRecording) {
                 timerElement = document.createElement('div');
                 timerElement.id = 'recordingTimer';
                 timerElement.className = 'recording-timer';
                 
-                /* Style the timer */
+                // Style the timer
                 timerElement.style.textAlign = 'center';
                 timerElement.style.fontSize = '14px';
                 timerElement.style.margin = '5px 0';
                 timerElement.style.color = '#d32f2f';
                 timerElement.style.fontWeight = 'bold';
                 
-                /* Find a place to add the timer */
+                // Find a place to add the timer
                 const container = document.querySelector('.call-status-container') || 
                                   document.querySelector('.call-controls') ||
                                   document.querySelector('.container');
@@ -884,7 +884,7 @@
                 }
             }
             
-            /* Show/hide timer */
+            // Show/hide timer
             if (timerElement) {
                 timerElement.style.display = isRecording ? 'block' : 'none';
                 if (isRecording) {
@@ -893,12 +893,12 @@
             }
         }
 
-        /* Function to start the recording timer */
+        // Function to start the recording timer
         function startRecordingTimer() {
-            /* Clear any existing timer */
+            // Clear any existing timer
             stopRecordingTimer();
             
-            /* Start a new timer */
+            // Start a new timer
             recordingTimer = setInterval(() => {
                 const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
                 const minutes = Math.floor(elapsed / 60);
@@ -911,7 +911,7 @@
             }, 1000);
         }
 
-        /* Function to stop the recording timer */
+        // Function to stop the recording timer
         function stopRecordingTimer() {
             if (recordingTimer) {
                 clearInterval(recordingTimer);
@@ -919,51 +919,51 @@
             }
         }
 
-        /* Add this to your session.on('accepted') handler */
-        /* This ensures the recording button appears when a call is connected */
+        // Add this to your session.on('accepted') handler
+        // This ensures the recording button appears when a call is connected
         document.addEventListener('DOMContentLoaded', function() {
-            /* Find the original session.on('accepted') handler */
+            // Find the original session.on('accepted') handler
             const originalAcceptedHandler = window.JsSIP.UA.prototype.on;
             
-            /* Override it to add our functionality */
+            // Override it to add our functionality
             window.JsSIP.UA.prototype.on = function(event, callback) {
                 if (event === 'newRTCSession') {
                     const originalCallback = callback;
                     callback = function(data) {
                         const session = data.session;
                         
-                        /* Store the active session globally */
+                        // Store the active session globally
                         window.activeSession = session;
                         
-                        /* Add our handler for the accepted event */
+                        // Add our handler for the accepted event
                         session.on('accepted', function() {
                             console.log('Call accepted - adding recording button');
                             
-                            /* Add a slight delay to ensure the UI is ready */
+                            // Add a slight delay to ensure the UI is ready
                             setTimeout(createRecordingButton, 500);
                         });
                         
-                        /* Add our handler for the ended event */
+                        // Add our handler for the ended event
                         session.on('ended', function() {
                             console.log('Call ended - checking recording status');
                             
-                            /* Stop recording if active */
+                            // Stop recording if active
                             if (isRecording) {
                                 stopCallRecording();
                             }
                         });
                         
-                        /* Call the original callback */
+                        // Call the original callback
                         originalCallback(data);
                     };
                 }
                 
-                /* Call the original method */
+                // Call the original method
                 return originalAcceptedHandler.call(this, event, callback);
             };
         });
 
-        /* Add CSS for recording button */
+        // Add CSS for recording button
         const style = document.createElement('style');
         style.textContent = `
         .recording-timer {
@@ -980,7 +980,7 @@
         `;
         document.head.appendChild(style);
 
-        /* Log that recording functionality has been initialized */
+        // Log that recording functionality has been initialized
         console.log('Call recording functionality initialized');
     </style>
 </head>
@@ -2016,15 +2016,13 @@
         // Call this function to test audio
         // testAudio();
 
-        // Simple, direct approach to add recording button to the button-container
+        // Fixed approach to add recording button without overlapping the call button
 
-        // Execute this code immediately
         (function() {
-            console.log('Adding recording button directly to button-container');
+            console.log('Adding recording button with proper positioning');
             
-            // Function to create and add the recording button
             function addRecordingButton() {
-                console.log('Attempting to add recording button to button-container');
+                console.log('Attempting to add recording button with proper positioning');
                 
                 // Find the button container
                 const buttonContainer = document.querySelector('.button-container');
@@ -2034,32 +2032,37 @@
                     return false;
                 }
                 
-                console.log('Found button-container:', buttonContainer);
-                
                 // Check if button already exists
                 if (document.getElementById('recordCallBtn')) {
                     console.log('Recording button already exists');
                     return true;
                 }
                 
-                // Create button wrapper (similar to other buttons)
-                const buttonWrapper = document.createElement('div');
-                buttonWrapper.className = 'button-wrapper';
-                buttonWrapper.id = 'recordBtnWrapper';
+                // Create a separate container for the record button
+                const recordContainer = document.createElement('div');
+                recordContainer.className = 'record-button-container';
+                recordContainer.style.display = 'flex';
+                recordContainer.style.justifyContent = 'center';
+                recordContainer.style.marginBottom = '10px'; // Add space above the call button
                 
                 // Create the button
                 const recordButton = document.createElement('button');
                 recordButton.id = 'recordCallBtn';
                 recordButton.className = 'control-button';
                 recordButton.innerHTML = '<span style="color: red;">●</span> Record';
+                recordButton.style.padding = '8px 16px';
+                recordButton.style.borderRadius = '4px';
+                recordButton.style.border = 'none';
+                recordButton.style.backgroundColor = '#f0f0f0';
+                recordButton.style.cursor = 'pointer';
                 
-                // Add the button to the wrapper
-                buttonWrapper.appendChild(recordButton);
+                // Add the button to the container
+                recordContainer.appendChild(recordButton);
                 
-                // Add the wrapper to the button container
-                buttonContainer.appendChild(buttonWrapper);
+                // Insert the record container BEFORE the button container
+                buttonContainer.parentNode.insertBefore(recordContainer, buttonContainer);
                 
-                console.log('Recording button added successfully');
+                console.log('Recording button added successfully above the call button');
                 
                 // Add click handler
                 recordButton.addEventListener('click', function() {
