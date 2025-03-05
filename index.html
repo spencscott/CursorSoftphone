@@ -1428,7 +1428,8 @@
                 console.log('Call accepted');
                 updateCallStatus('Connected');
                 showHangupButton();
-                startCallTimer();
+                callStartTime = Date.now();
+                callTimer = setInterval(updateCallTimer, 1000);
             });
 
             session.on('failed', function(e) {
@@ -1436,14 +1437,21 @@
                 updateCallStatus('Call Failed');
                 showCallButton();
                 stopRingtone();
+                if (callTimer) {
+                    clearInterval(callTimer);
+                    callTimer = null;
+                }
             });
 
             session.on('ended', function() {
                 console.log('Call ended');
-                updateCallStatus('Call Ended');
+                updateCallStatus('Ended');
                 showCallButton();
                 stopRingtone();
-                stopCallTimer();
+                if (callTimer) {
+                    clearInterval(callTimer);
+                    callTimer = null;
+                }
             });
 
             session.on('progress', function() {
