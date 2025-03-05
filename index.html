@@ -897,17 +897,25 @@
         document.getElementById('answerBtn').addEventListener('click', function() {
             if (session) {
                 stopRingtone();
-                session.answer({
-                    mediaConstraints: { audio: true, video: false }
-                }).catch(error => {
-                    console.error('Error answering call:', error);
+                try {
+                    session.answer({
+                        mediaConstraints: { audio: true, video: false }
+                    }).then(() => {
+                        console.log('Call answered successfully');
+                    }).catch(error => {
+                        console.error('Error answering call:', error);
+                        updateCallStatus('Failed to answer');
+                    });
+                    
+                    setupSessionHandlers(session);
+                    showHangupButton();
+                    updateCallStatus('Connected');
+                    startSpeechRecognition();
+                    showCaptionContainer();
+                } catch (error) {
+                    console.error('Exception answering call:', error);
                     updateCallStatus('Failed to answer');
-                });
-                setupSessionHandlers(session);
-                showHangupButton();
-                updateCallStatus('Connected');
-                startSpeechRecognition();
-                showCaptionContainer();
+                }
             }
         });
 
@@ -1221,25 +1229,66 @@
                 recognition.lang = 'en-US';
                 recognition.interimResults = true;
                 recognition.continuous = true;
+                
+                // Set a longer timeout before giving up on speech
+                recognition.maxAlternatives = 3;
+                
+                // Handle no-speech errors by restarting
+                recognition.onerror = function(event) {
+                    console.log('Speech recognition error:', event.error);
+                    
+                    // If it's a no-speech error, restart recognition after a short delay
+                    if (event.error === 'no-speech') {
+                        setTimeout(() => {
+                            if (window.recognition) {
+                                try {
+                                    window.recognition.start();
+                                    console.log('Restarted speech recognition after no-speech error');
+                                } catch (e) {
+                                    console.log('Failed to restart recognition:', e);
+                                }
+                            }
+                        }, 1000);
+                    }
+                };
+                
+                recognition.onend = function() {
+                    console.log('Speech recognition ended');
+                    // Restart if it ends unexpectedly and we still have an active call
+                    if (session && session.isEstablished() && window.recognition) {
+                        try {
+                            window.recognition.start();
+                            console.log('Restarted speech recognition after unexpected end');
+                        } catch (e) {
+                            console.log('Failed to restart recognition after end:', e);
+                        }
+                    }
+                };
 
                 recognition.onresult = function(event) {
+                    console.log('Speech recognition result received');
                     const transcript = Array.from(event.results)
                         .map(result => result[0])
                         .map(result => result.transcript)
                         .join('');
+                    
                     document.getElementById('captions').textContent = transcript;
+                    console.log('Transcript:', transcript);
                 };
 
-                recognition.onerror = function(event) {
-                    console.error('Speech recognition error', event.error);
-                };
-
-                recognition.start();
+                try {
+                    recognition.start();
+                    console.log('Speech recognition started');
+                } catch (e) {
+                    console.error('Error starting speech recognition:', e);
+                }
                 
                 // Store recognition globally so we can stop it later
                 window.recognition = recognition;
             } else {
                 console.warn('Speech recognition not supported in this browser.');
+                // Show a message in the captions container
+                document.getElementById('captions').textContent = 'Speech recognition not supported in this browser';
             }
         }
 
@@ -1248,6 +1297,12 @@
             captionContainer.classList.remove('hidden');
             captionContainer.style.display = 'flex'; // Explicitly set display to flex
             console.log('Caption container shown:', captionContainer);
+            
+            // Add debug button for testing
+            addCaptionDebugButton();
+            
+            // Initialize with a welcome message
+            updateCaptions("Call connected. Captions will appear here...");
         }
 
         function hideCaptionContainer() {
@@ -1659,6 +1714,62 @@
                 alert('Failed to make call: ' + error.message);
             }
         });
+
+        // Add this function to manually update captions
+        function updateCaptions(text) {
+            const captionsElement = document.getElementById('captions');
+            if (captionsElement) {
+                captionsElement.textContent = text;
+            }
+        }
+
+        // Add a function to simulate captions for testing
+        function simulateCaptions() {
+            if (session && session.isEstablished()) {
+                const phrases = [
+                    "Hello, can you hear me?",
+                    "I'm calling about your recent inquiry",
+                    "Could you please provide more information?",
+                    "Thank you for your patience",
+                    "Let me check that for you",
+                    "I'll need to verify some information",
+                    "Is there anything else I can help with?",
+                    "Please hold while I look into that"
+                ];
+                
+                const randomPhrase = phrases[Math.floor(Math.random() * phrases.length)];
+                updateCaptions(randomPhrase);
+                
+                // Schedule next caption update
+                setTimeout(simulateCaptions, 5000);
+            }
+        }
+
+        // Add a debug button to the caption container
+        function addCaptionDebugButton() {
+            const captionContainer = document.getElementById('captionContainer');
+            if (captionContainer) {
+                const debugBtn = document.createElement('button');
+                debugBtn.textContent = "Test Captions";
+                debugBtn.style.position = "absolute";
+                debugBtn.style.bottom = "5px";
+                debugBtn.style.right = "5px";
+                debugBtn.style.fontSize = "12px";
+                debugBtn.style.padding = "2px 5px";
+                debugBtn.style.background = "#1a73e8";
+                debugBtn.style.color = "white";
+                debugBtn.style.border = "none";
+                debugBtn.style.borderRadius = "4px";
+                
+                debugBtn.addEventListener('click', function() {
+                    updateCaptions("Caption test - " + new Date().toLocaleTimeString());
+                    // Start simulated captions
+                    simulateCaptions();
+                });
+                
+                captionContainer.appendChild(debugBtn);
+            }
+        }
     })();
     </script>
 </body>
