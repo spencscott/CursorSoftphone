@@ -779,7 +779,10 @@
                 userAgent.on('registered', async function() {
                     try {
                         await navigator.mediaDevices.getUserMedia({ audio: true });
-                        await loadAudioDevices();
+                        await loadAudioDevices().catch(error => {
+                            console.error('Failed to load audio devices:', error);
+                            updateStatus('Audio device error', 'red');
+                        });
                         
                         // Create or get audio element
                         let audioElement = document.getElementById('remoteAudio');
@@ -997,7 +1000,7 @@
                                         const audioElement = document.getElementById('remoteAudio');
                                         if (audioElement) {
                                             audioElement.srcObject = remoteStream;
-                                            audioElement.play().catch(e => console.error('Error playing audio:', e));
+                                            await audioElement.play();
                                         }
                                         
                                         // Manually show the container
@@ -1053,9 +1056,14 @@
                 document.getElementById('answerBtn').addEventListener('click', function() {
                     if (session) {
                         stopRingtone();
-                        session.answer({
-                            mediaConstraints: { audio: true, video: false }
-                        });
+                        try {
+                            await session.answer({
+                                mediaConstraints: { audio: true, video: false }
+                            });
+                        } catch (error) {
+                            console.error('Error answering call:', error);
+                            updateCallStatus('Failed to answer');
+                        }
                         setupSessionHandlers(session);
                         showHangupButton();
                         updateCallStatus('Connected');
@@ -1214,6 +1222,7 @@
             // Update microphone
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
+                stream = null;
                 try {
                     stream = await navigator.mediaDevices.getUserMedia({
                         audio: { deviceId: { exact: currentMicId } }
@@ -1477,16 +1486,10 @@
 
         // Updated stopCallTimer function
         function stopCallTimer() {
-            console.log('Stopping call timer');
-            if (window.callTimerInterval) {
-                clearInterval(window.callTimerInterval);
+            const timerInterval = window.callTimerInterval;
+            if (timerInterval) {
                 window.callTimerInterval = null;
-            }
-            
-            // Reset the timer display
-            const timerElement = document.querySelector('.call-timer') || document.getElementById('callTimer');
-            if (timerElement) {
-                timerElement.textContent = '00:00';
+                clearInterval(timerInterval);
             }
         }
 
@@ -1614,6 +1617,24 @@
 
         // Call this function to test audio
         // testAudio();
+
+        function validatePhoneNumber(number) {
+            const cleaned = number.replace(/\D/g, '');
+            if (!/^\d{10,15}$/.test(cleaned)) {
+                throw new Error('Invalid phone number format');
+            }
+            return cleaned;
+        }
+
+        function checkBrowserSupport() {
+            const features = {
+                webRTC: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
+                speechRecognition: !!(window.SpeechRecognition || window.webkitSpeechRecognition),
+                audioOutput: !!(typeof HTMLAudioElement !== 'undefined' && HTMLAudioElement.prototype.setSinkId)
+            };
+            
+            return features;
+        }
     })();
     </script>
 </body>
