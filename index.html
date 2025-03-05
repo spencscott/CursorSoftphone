@@ -202,33 +202,28 @@
             width: 100%;
             display: flex;
             flex-direction: row;
+            flex-wrap: wrap;
             justify-content: center;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
             position: relative;
-            height: 48px;
+            min-height: 48px;
             margin: 16px 0;
         }
 
         .button-wrapper {
-            width: auto;
-            position: relative;
-            transform: none;
-            left: auto;
-        }
-
-        .button-wrapper:not(.hidden) {
+            flex: 1 1 auto;
+            min-width: 120px;
+            max-width: 200px;
             height: 48px;
+            margin: 4px;
         }
 
         .button-wrapper.hidden {
+            display: none;
             height: 0;
             margin: 0;
             padding: 0;
-            opacity: 0;
-            pointer-events: none;
-            position: absolute;
-            visibility: hidden;
         }
 
         .call-button,
