@@ -914,9 +914,7 @@
         document.getElementById('hangupBtn').addEventListener('click', function() {
             if (session) {
                 session.terminate();
-                updateCallStatus('Ended');
-                showCallButton();
-                stopRingtone();
+                handleCallEnded();
             }
         });
 
@@ -1214,6 +1212,11 @@
         function startSpeechRecognition() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (SpeechRecognition) {
+                // Stop any existing recognition
+                if (window.recognition) {
+                    window.recognition.stop();
+                }
+                
                 let recognition = new SpeechRecognition();
                 recognition.lang = 'en-US';
                 recognition.interimResults = true;
@@ -1232,17 +1235,25 @@
                 };
 
                 recognition.start();
+                
+                // Store recognition globally so we can stop it later
+                window.recognition = recognition;
             } else {
                 console.warn('Speech recognition not supported in this browser.');
             }
         }
 
         function showCaptionContainer() {
-            document.getElementById('captionContainer').classList.remove('hidden');
+            const captionContainer = document.getElementById('captionContainer');
+            captionContainer.classList.remove('hidden');
+            captionContainer.style.display = 'flex'; // Explicitly set display to flex
+            console.log('Caption container shown:', captionContainer);
         }
 
         function hideCaptionContainer() {
-            document.getElementById('captionContainer').classList.add('hidden');
+            const captionContainer = document.getElementById('captionContainer');
+            captionContainer.classList.add('hidden');
+            captionContainer.style.display = 'none'; // Explicitly set display to none
         }
 
         // Updated startCallTimer function to use existing timer element
@@ -1569,6 +1580,17 @@
                 };
             });
 
+            // Add these event handlers to detect call termination
+            session.on('ended', function() {
+                console.log('Call ended by remote party');
+                handleCallEnded();
+            });
+            
+            session.on('failed', function() {
+                console.log('Call failed');
+                handleCallEnded();
+            });
+
             session.on('accepted', function() {
                 console.log('Call accepted');
                 updateCallStatus('Connected');
@@ -1576,8 +1598,67 @@
                 callStartTime = Date.now();
                 callTimer = setInterval(updateCallTimer, 1000);
                 setupRecording(session);
+                startSpeechRecognition();
+                showCaptionContainer();
             });
         }
+
+        // Add this function to handle call ending from any source
+        function handleCallEnded() {
+            updateCallStatus('Ended');
+            showCallButton();
+            stopRingtone();
+            stopSpeechRecognition();
+            hideCaptionContainer();
+            
+            // Make sure to clear the timer
+            if (callTimer) {
+                clearInterval(callTimer);
+                callTimer = null;
+            }
+        }
+
+        function stopSpeechRecognition() {
+            if (window.recognition) {
+                window.recognition.stop();
+                window.recognition = null;
+            }
+        }
+
+        // Add this after the other button handlers
+        document.getElementById('callBtn').addEventListener('click', function() {
+            const number = document.getElementById('display-text').textContent.trim();
+            if (!number) {
+                alert('Please enter a number to call');
+                return;
+            }
+            
+            try {
+                // Create a simple URI for the call
+                const target = `sip:${number}@${userAgent.configuration.uri.host}`;
+                
+                // Start the call
+                session = userAgent.call(target, {
+                    mediaConstraints: { audio: true, video: false },
+                    pcConfig: {
+                        iceServers: [
+                            { urls: ['stun:stun.l.google.com:19302'] }
+                        ]
+                    }
+                });
+                
+                // Set up session handlers
+                setupSessionHandlers(session);
+                
+                // Update UI
+                updateCallStatus('Calling...');
+                showHangupButton();
+                
+            } catch (error) {
+                console.error('Error making call:', error);
+                alert('Failed to make call: ' + error.message);
+            }
+        });
     })();
     </script>
 </body>
