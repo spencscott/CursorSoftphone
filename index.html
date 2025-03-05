@@ -583,6 +583,59 @@
         .icon-button:hover {
             color: #1a73e8;
         }
+
+        .record-button {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            background: #9c27b0;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .record-button.recording {
+            background: #d32f2f;
+            animation: pulse 2s infinite;
+        }
+
+        .download-button {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            background: #1976d2;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .record-button:hover {
+            background: #7b1fa2;
+        }
+
+        .record-button.recording:hover {
+            background: #c62828;
+        }
+
+        .download-button:hover {
+            background: #1565c0;
+        }
     </style>
 </head>
 <body>
@@ -717,6 +770,18 @@
                         Hang Up
                     </button>
                 </div>
+                <div class="button-wrapper hidden" id="recordBtnWrapper">
+                    <button id="recordBtn" class="record-button">
+                        <i class="material-icons">fiber_manual_record</i>
+                        Record
+                    </button>
+                </div>
+                <div class="button-wrapper hidden" id="downloadBtnWrapper">
+                    <button id="downloadBtn" class="download-button">
+                        <i class="material-icons">download</i>
+                        Download Recording
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -734,6 +799,9 @@
         let ringtoneAudio = new Audio();
         let selectedRingtone = null;
         let captioningSystem = null;
+        let mediaRecorder;
+        let recordedChunks = [];
+        let isRecording = false;
 
         function updateStatus(status, color = 'black') {
             console.log('Status:', status);
@@ -1104,6 +1172,7 @@
             document.getElementById('callBtnWrapper').classList.add('hidden');
             document.getElementById('answerBtnWrapper').classList.add('hidden');
             document.getElementById('hangupBtnWrapper').classList.remove('hidden');
+            document.getElementById('recordBtnWrapper').classList.remove('hidden');
         }
 
         // Initialize ringtone from localStorage if available
