@@ -1387,6 +1387,43 @@
 
         // Add this function if it's not already defined
         function setupSessionHandlers(session) {
+            // Add this handler for connecting remote audio stream
+            session.on('peerconnection', (e) => {
+                console.log('Peer connection event');
+                const peerconnection = e.peerconnection;
+                
+                peerconnection.ontrack = (trackEvent) => {
+                    console.log('Received remote track:', trackEvent);
+                    const audioElement = document.getElementById('remoteAudio');
+                    if (!audioElement) {
+                        console.error('Audio element not found');
+                        return;
+                    }
+                    
+                    // Ensure we're handling audio tracks only
+                    if (trackEvent.track.kind === 'audio') {
+                        console.log('Setting remote audio stream');
+                        audioElement.srcObject = trackEvent.streams[0];
+                        
+                        // Ensure audio properties are set correctly
+                        audioElement.muted = false;
+                        audioElement.volume = 1.0;
+                        
+                        // Try to play the audio
+                        audioElement.play().catch(err => {
+                            console.error('Error playing audio:', err);
+                        });
+                        
+                        // Set speaker if we have one selected
+                        if (currentSpeakerId && audioElement.setSinkId) {
+                            audioElement.setSinkId(currentSpeakerId).catch(err => {
+                                console.error('Error setting audio output:', err);
+                            });
+                        }
+                    }
+                };
+            });
+
             session.on('accepted', function() {
                 console.log('Call accepted');
                 updateCallStatus('Connected');
